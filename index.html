@@ -3,95 +3,103 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Datadog Preflight — vérifiez votre environnement avant l'agent</title>
+<title>Datadog Preflight — vérifiez avant d'installer l'agent</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600&family=Inter:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#F5F6F8; --surface:#FFFFFF; --ink:#16181D; --muted:#5A6072;
-    --line:#E2E5EB; --accent:#5B4FE0; --accent-ink:#3A30A8; --accent-soft:#ECEAFB;
+    --bg:#F4F6F9; --surface:#FFFFFF; --ink:#14161B; --muted:#586074;
+    --line:#E4E7EE; --accent:#5B4FE0; --accent-ink:#3A30A8; --accent-soft:#EEEBFB;
     --ok:#1E9E6A; --warn:#C8881B; --err:#D14545;
-    --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
-    --radius:14px;
+    --panel:#0E1016; --panel-2:#181B22; --panel-line:#262A33; --panel-ink:#E7E9EF;
+    --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
   }
   *{box-sizing:border-box}
   html{scroll-behavior:smooth}
-  body{
-    margin:0;background:var(--bg);color:var(--ink);
-    font-family:"Inter",system-ui,sans-serif;line-height:1.65;
-    -webkit-font-smoothing:antialiased;
-  }
-  a{color:var(--accent-ink);text-underline-offset:3px}
-  .wrap{max-width:880px;margin:0 auto;padding:0 24px}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"Inter",system-ui,sans-serif;
+    line-height:1.6;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:920px;margin:0 auto;padding:0 24px}
+  a{color:var(--accent-ink)}
 
   header{border-bottom:1px solid var(--line);background:var(--surface)}
   .bar{display:flex;align-items:center;justify-content:space-between;height:64px}
-  .brand{display:flex;align-items:center;gap:10px;font-family:"Space Grotesk";
-    font-weight:600;font-size:17px;letter-spacing:-.01em}
+  .brand{display:flex;align-items:center;gap:10px;font-family:"Space Grotesk";font-weight:600;
+    font-size:17px;letter-spacing:-.01em}
   .brand .lamp{width:11px;height:11px;border-radius:50%;background:var(--ok);
     box-shadow:0 0 0 3px rgba(30,158,106,.16)}
   .nav a{color:var(--muted);text-decoration:none;font-size:14px;font-weight:500}
   .nav a:hover{color:var(--ink)}
 
-  .hero{padding:72px 0 40px}
-  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.14em;
-    text-transform:uppercase;color:var(--accent-ink)}
-  h1{font-family:"Space Grotesk";font-weight:600;font-size:clamp(30px,5vw,46px);
-    line-height:1.08;letter-spacing:-.02em;margin:14px 0 0}
-  .lede{font-size:18px;color:var(--muted);max-width:60ch;margin:18px 0 0}
+  .hero{padding:64px 0 28px}
+  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--accent-ink)}
+  h1{font-family:"Space Grotesk";font-weight:700;font-size:clamp(30px,5vw,44px);line-height:1.07;
+    letter-spacing:-.02em;margin:14px 0 0;max-width:18ch}
+  .lede{font-size:18px;color:var(--muted);max-width:58ch;margin:16px 0 0}
 
-  .card{background:var(--surface);border:1px solid var(--line);
-    border-radius:var(--radius);padding:28px;margin:22px 0}
-  .step{font-family:var(--mono);font-size:12px;letter-spacing:.1em;
-    text-transform:uppercase;color:var(--muted);margin:0 0 12px}
-  .step b{color:var(--accent-ink)}
+  /* --- Platform selector (signature) --- */
+  .seclabel{font-family:var(--mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--muted);margin:34px 0 12px}
+  .seclabel b{color:var(--accent-ink)}
+  .platforms{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .plat{appearance:none;text-align:left;cursor:pointer;background:var(--surface);
+    border:1.5px solid var(--line);border-radius:16px;padding:20px;transition:all .14s ease;
+    display:flex;flex-direction:column;gap:12px}
+  .plat:hover{border-color:var(--accent);transform:translateY(-2px)}
+  .plat:focus-visible{outline:2px solid var(--accent-ink);outline-offset:3px}
+  .plat[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);
+    box-shadow:0 6px 24px -12px rgba(91,79,224,.5)}
+  .plat .ic{width:40px;height:40px;color:var(--accent-ink)}
+  .plat .pname{font-family:"Space Grotesk";font-weight:600;font-size:18px}
+  .plat .pdesc{font-size:13px;color:var(--muted);font-family:var(--mono)}
 
-  .regions{display:flex;flex-direction:column;gap:14px}
-  .region-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
-  .region-label{font-size:13px;color:var(--muted);width:74px;flex:0 0 74px}
-  .pill{font-family:var(--mono);font-size:13px;font-weight:500;cursor:pointer;
-    padding:8px 14px;border-radius:999px;border:1px solid var(--line);
-    background:var(--surface);color:var(--ink);transition:all .12s ease}
+  /* --- Site selector --- */
+  .pills{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .pill{font-family:var(--mono);font-size:13px;font-weight:500;cursor:pointer;padding:7px 13px;
+    border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink);
+    transition:all .12s}
   .pill:hover{border-color:var(--accent)}
-  .pill[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);
-    color:#fff}
+  .pill[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
   .pill:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
+  .reglabel{font-size:12px;color:var(--muted);margin-right:4px;font-family:var(--mono)}
+  .hint{font-size:13.5px;color:var(--muted);margin:12px 0 0}
 
-  .hint{font-size:13.5px;color:var(--muted);margin:16px 0 0}
-
-  .cmd{display:flex;align-items:stretch;gap:0;margin:10px 0 0;
-    border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#0E1016}
-  .cmd code{font-family:var(--mono);font-size:13.5px;color:#E7E9EF;padding:14px 16px;
-    overflow-x:auto;white-space:nowrap;flex:1;display:block}
-  .cmd code .flag{color:#9C93F0}
-  .cmd code .url{color:#7FD1A8}
-  .copy{border:0;border-left:1px solid #23262F;background:#181B22;color:#C9CCD6;
-    font-family:var(--mono);font-size:12px;padding:0 16px;cursor:pointer;
-    white-space:nowrap;transition:background .12s}
+  /* --- Command panel --- */
+  .panel{margin-top:14px;border:1px solid var(--line);border-radius:16px;overflow:hidden;
+    background:var(--surface)}
+  .panel-head{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line)}
+  .panel-head .ptitle{font-family:"Space Grotesk";font-weight:600}
+  .panel-head .ptag{font-family:var(--mono);font-size:12px;color:var(--muted)}
+  .steps{padding:18px}
+  .stepn{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--muted);margin:0 0 8px}
+  .stepn:not(:first-child){margin-top:18px}
+  .cmd{display:flex;align-items:stretch;border:1px solid var(--panel-line);border-radius:10px;
+    overflow:hidden;background:var(--panel)}
+  .cmd code{font-family:var(--mono);font-size:13px;color:var(--panel-ink);padding:13px 15px;
+    overflow-x:auto;white-space:nowrap;flex:1}
+  .copy{border:0;border-left:1px solid var(--panel-line);background:var(--panel-2);color:#C9CCD6;
+    font-family:var(--mono);font-size:12px;padding:0 15px;cursor:pointer;white-space:nowrap;transition:background .12s}
   .copy:hover{background:#23262F}
   .copy:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 
-  .divider{height:1px;background:var(--line);margin:24px 0}
-  .sub{font-size:14px;color:var(--muted);margin:0 0 4px}
-
-  .checklist{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
-    gap:12px;margin:14px 0 0}
-  .check{display:flex;align-items:center;gap:10px;font-size:14.5px;
-    padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg)}
+  /* --- Checklist signature --- */
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:26px;margin:22px 0}
+  h2{font-family:"Space Grotesk";font-weight:600;font-size:20px;letter-spacing:-.01em;margin:0 0 4px}
+  .sub{font-size:14px;color:var(--muted);margin:0}
+  .checklist{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:16px 0 0}
+  .check{display:flex;align-items:center;gap:10px;font-size:14px;padding:12px 14px;
+    border:1px solid var(--line);border-radius:10px;background:var(--bg)}
   .dot{width:9px;height:9px;border-radius:50%;flex:0 0 9px;background:var(--ok)}
 
-  h2{font-family:"Space Grotesk";font-weight:600;font-size:20px;letter-spacing:-.01em;
-    margin:0 0 4px}
-
-  footer{border-top:1px solid var(--line);margin-top:48px;background:var(--surface)}
-  .foot{display:flex;flex-wrap:wrap;gap:8px 18px;justify-content:space-between;
-    padding:24px 0;font-size:13px;color:var(--muted)}
+  footer{border-top:1px solid var(--line);margin-top:46px;background:var(--surface)}
+  .foot{display:flex;flex-wrap:wrap;gap:8px 18px;justify-content:space-between;padding:24px 0;
+    font-size:13px;color:var(--muted)}
 
   @media (prefers-reduced-motion:reduce){*{transition:none!important}}
-  @media (max-width:560px){
-    .region-label{width:100%;flex-basis:100%}
-    .copy{padding:0 12px}
+  @media (max-width:680px){
+    .platforms{grid-template-columns:1fr}
   }
 </style>
 </head>
@@ -100,86 +108,97 @@
 <header>
   <div class="wrap bar">
     <div class="brand"><span class="lamp" aria-hidden="true"></span> Datadog Preflight</div>
-    <nav class="nav"><a href="#install">Installation</a> &nbsp; <a href="https://github.com/jbroberjot/datadog-preflight">GitHub</a></nav>
+    <nav class="nav"><a href="https://github.com/jbroberjot/datadog-preflight">GitHub</a></nav>
   </div>
 </header>
 
 <main>
   <section class="wrap hero">
     <div class="eyebrow">Vérification avant installation</div>
-    <h1>Votre environnement est-il prêt pour l'agent Datadog ?</h1>
-    <p class="lede">Lancez un contrôle en une commande. Il teste, depuis votre propre réseau,
-      l'accès aux services Datadog et vous dit en clair ce qui bloque — avant même
-      d'installer quoi que ce soit.</p>
+    <h1>Prêt à recevoir l'agent Datadog ?</h1>
+    <p class="lede">Une vérification en une commande, qui teste depuis votre propre environnement
+      l'accès aux services Datadog et vous dit en clair ce qui bloque — avant d'installer quoi que ce soit.</p>
   </section>
 
-  <section class="wrap" id="install">
-    <div class="card">
-      <p class="step"><b>1</b> &nbsp;Choisissez votre site Datadog</p>
-      <div class="regions" id="regions">
-        <div class="region-row">
-          <span class="region-label">États-Unis</span>
-          <button class="pill" data-site="us1" aria-pressed="false">US1</button>
-          <button class="pill" data-site="us3" aria-pressed="false">US3</button>
-          <button class="pill" data-site="us5" aria-pressed="false">US5</button>
+  <section class="wrap">
+    <!-- Étape 1 : plateforme -->
+    <p class="seclabel"><b>1</b> &nbsp;Où voulez-vous lancer la vérification ?</p>
+    <div class="platforms" id="platforms">
+      <button class="plat" data-method="k8s" aria-pressed="true">
+        <svg class="ic" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" aria-hidden="true">
+          <path d="M24 5l16 7.4v15.2L24 35 8 27.6V12.4z"/>
+          <circle cx="24" cy="20" r="5"/>
+          <path d="M24 9v6M24 25v7M14 16l5 3M34 16l-5 3M16 27l4-3M32 27l-4-3" stroke-width="1.8"/>
+        </svg>
+        <div>
+          <div class="pname">Kubernetes</div>
+          <div class="pdesc">cluster · kubectl</div>
         </div>
-        <div class="region-row">
-          <span class="region-label">Europe</span>
-          <button class="pill" data-site="eu" aria-pressed="true">EU1</button>
+      </button>
+      <button class="plat" data-method="linux" aria-pressed="false">
+        <svg class="ic" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="6" y="9" width="36" height="30" rx="4"/>
+          <path d="M14 20l6 5-6 5M24 31h9"/>
+        </svg>
+        <div>
+          <div class="pname">Linux / macOS</div>
+          <div class="pdesc">serveur · script bash</div>
         </div>
-        <div class="region-row">
-          <span class="region-label">Asie-Pac.</span>
-          <button class="pill" data-site="ap1" aria-pressed="false">AP1</button>
-          <button class="pill" data-site="ap2" aria-pressed="false">AP2</button>
+      </button>
+      <button class="plat" data-method="windows" aria-pressed="false">
+        <svg class="ic" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" aria-hidden="true">
+          <rect x="7" y="7" width="15" height="15" rx="1.5"/>
+          <rect x="26" y="7" width="15" height="15" rx="1.5"/>
+          <rect x="7" y="26" width="15" height="15" rx="1.5"/>
+          <rect x="26" y="26" width="15" height="15" rx="1.5"/>
+        </svg>
+        <div>
+          <div class="pname">Windows</div>
+          <div class="pdesc">serveur · PowerShell</div>
         </div>
-        <div class="region-row">
-          <span class="region-label">Gouv.</span>
-          <button class="pill" data-site="gov" aria-pressed="false">US1-FED</button>
-        </div>
-      </div>
-      <p class="hint">Vous ne savez pas lequel ? Regardez l'adresse de votre interface Datadog :
-        <code>app.datadoghq.eu</code> &rarr; EU1, <code>app.datadoghq.com</code> &rarr; US1,
-        <code>us5.datadoghq.com</code> &rarr; US5, etc.</p>
-
-      <div class="divider"></div>
-
-      <p class="step"><b>2</b> &nbsp;Lancez la vérification</p>
-      <div class="cmd">
-        <code id="cmd-apply"></code>
-        <button class="copy" data-target="cmd-apply">Copier</button>
-      </div>
-
-      <p class="step" style="margin-top:22px"><b>3</b> &nbsp;Lisez le rapport</p>
-      <div class="cmd">
-        <code id="cmd-logs"><span class="flag">kubectl</span> logs -f job/datadog-preflight</code>
-        <button class="copy" data-target="cmd-logs">Copier</button>
-      </div>
-      <p class="hint">Le rapport s'affiche en clair, avec pour chaque blocage la cause et la marche à suivre.
-        Pour nettoyer ensuite : <code>kubectl delete job/datadog-preflight</code>.</p>
+      </button>
     </div>
 
+    <!-- Étape 2 : site -->
+    <p class="seclabel"><b>2</b> &nbsp;Quel est votre site Datadog ?</p>
+    <div class="pills" id="sites">
+      <span class="reglabel">US</span>
+      <button class="pill" data-site="us1" aria-pressed="false">US1</button>
+      <button class="pill" data-site="us3" aria-pressed="false">US3</button>
+      <button class="pill" data-site="us5" aria-pressed="false">US5</button>
+      <span class="reglabel" style="margin-left:8px">EU</span>
+      <button class="pill" data-site="eu" aria-pressed="true">EU1</button>
+      <span class="reglabel" style="margin-left:8px">APAC</span>
+      <button class="pill" data-site="ap1" aria-pressed="false">AP1</button>
+      <button class="pill" data-site="ap2" aria-pressed="false">AP2</button>
+      <span class="reglabel" style="margin-left:8px">Gov</span>
+      <button class="pill" data-site="gov" aria-pressed="false">US1-FED</button>
+    </div>
+    <p class="hint">Dans le doute, regardez l'adresse de votre interface Datadog :
+      <code>app.datadoghq.eu</code> &rarr; EU1, <code>app.datadoghq.com</code> &rarr; US1,
+      <code>us5.datadoghq.com</code> &rarr; US5…</p>
+
+    <!-- Étape 3 : commandes -->
+    <p class="seclabel"><b>3</b> &nbsp;Lancez la vérification</p>
+    <div class="panel">
+      <div class="panel-head">
+        <span class="ptitle" id="panel-title">Kubernetes</span>
+        <span class="ptag" id="panel-tag">site EU1</span>
+      </div>
+      <div class="steps" id="steps"></div>
+    </div>
+  </section>
+
+  <section class="wrap">
     <div class="card">
       <h2>Ce que le contrôle vérifie</h2>
-      <p class="sub">Depuis l'intérieur de votre cluster, là où tournera l'agent.</p>
+      <p class="sub">Depuis votre environnement, là où tournera l'agent.</p>
       <div class="checklist">
         <div class="check"><span class="dot" aria-hidden="true"></span> Résolution DNS des services Datadog</div>
         <div class="check"><span class="dot" aria-hidden="true"></span> Pare-feu : sortie sur le port 443</div>
         <div class="check"><span class="dot" aria-hidden="true"></span> Détection d'un proxy</div>
-        <div class="check"><span class="dot" aria-hidden="true"></span> Joignabilité des endpoints (APM, logs, métriques…)</div>
+        <div class="check"><span class="dot" aria-hidden="true"></span> Endpoints APM, logs, métriques…</div>
       </div>
-    </div>
-
-    <div class="card">
-      <h2>Plutôt un serveur, hors Kubernetes ?</h2>
-      <p class="sub">Un script unique pour Linux et macOS, sans rien à installer.</p>
-      <p class="step" style="margin-top:14px"><b>·</b> &nbsp;Téléchargez puis lancez</p>
-      <div class="cmd">
-        <code id="cmd-host"><span class="flag">./datadog-preflight.sh</span> --site <span class="url" id="host-site">eu</span></code>
-        <button class="copy" data-target="cmd-host">Copier</button>
-      </div>
-      <p class="hint">Récupérez le script sur la
-        <a href="https://github.com/jbroberjot/datadog-preflight/releases">page des releases</a>,
-        rendez-le exécutable (<code>chmod +x</code>), puis lancez-le.</p>
     </div>
   </section>
 </main>
@@ -192,40 +211,69 @@
 </footer>
 
 <script>
-  // >>> Remplacez par votre dépôt GitHub (utilisateur/repo) <<<
   const REPO = "jbroberjot/datadog-preflight";
-  const BASE = `https://raw.githubusercontent.com/${REPO}/main/deploy`;
+  const RAW = `https://raw.githubusercontent.com/${REPO}/main`;
 
-  const applyEl = document.getElementById("cmd-apply");
-  const hostSiteEl = document.getElementById("host-site");
+  const SITE_NAMES = {us1:"US1",us3:"US3",us5:"US5",eu:"EU1",ap1:"AP1",ap2:"AP2",gov:"US1-FED"};
+  const METHOD_NAMES = {k8s:"Kubernetes",linux:"Linux / macOS",windows:"Windows"};
 
-  function render(site){
-    applyEl.innerHTML =
-      `<span class="flag">kubectl</span> apply -f ` +
-      `<span class="url">${BASE}/${site}.yaml</span>`;
-    hostSiteEl.textContent = site;
+  // Construit les étapes (label + commande) pour une plateforme et un site.
+  function buildSteps(method, site){
+    if(method === "k8s"){
+      return [
+        ["Déployer la vérification", `kubectl apply -f ${RAW}/deploy/${site}.yaml`],
+        ["Lire le rapport",          `kubectl logs -f job/datadog-preflight`],
+        ["Nettoyer (après lecture)", `kubectl delete -f ${RAW}/deploy/${site}.yaml`],
+      ];
+    }
+    if(method === "linux"){
+      return [
+        ["Télécharger le script", `curl -fsSL -o datadog-preflight.sh ${RAW}/datadog-preflight.sh`],
+        ["Lancer la vérification", `chmod +x datadog-preflight.sh && ./datadog-preflight.sh --site ${site}`],
+      ];
+    }
+    // windows
+    return [
+      ["Télécharger le script", `irm ${RAW}/datadog-preflight.ps1 -OutFile datadog-preflight.ps1`],
+      ["Lancer la vérification", `powershell -ExecutionPolicy Bypass -File .\\datadog-preflight.ps1 -Site ${site}`],
+    ];
   }
 
-  document.getElementById("regions").addEventListener("click", (e) => {
-    const btn = e.target.closest(".pill");
-    if(!btn) return;
-    document.querySelectorAll(".pill").forEach(p => p.setAttribute("aria-pressed","false"));
-    btn.setAttribute("aria-pressed","true");
-    render(btn.dataset.site);
-  });
+  let method = "k8s", site = "eu";
 
-  document.querySelectorAll(".copy").forEach(btn => {
-    btn.addEventListener("click", async () => {
-      const text = document.getElementById(btn.dataset.target).textContent;
-      try{
-        await navigator.clipboard.writeText(text);
-        const old = btn.textContent; btn.textContent = "Copié";
-        setTimeout(() => btn.textContent = old, 1400);
-      }catch(_){ /* clipboard indisponible : sélection manuelle */ }
+  function render(){
+    document.getElementById("panel-title").textContent = METHOD_NAMES[method];
+    document.getElementById("panel-tag").textContent = "site " + SITE_NAMES[site];
+    const steps = buildSteps(method, site);
+    const c = document.getElementById("steps");
+    c.innerHTML = "";
+    steps.forEach(([label, cmd], i) => {
+      const h = document.createElement("p"); h.className = "stepn"; h.textContent = label;
+      const row = document.createElement("div"); row.className = "cmd";
+      const code = document.createElement("code"); code.textContent = cmd;
+      const btn = document.createElement("button"); btn.className = "copy"; btn.textContent = "Copier";
+      btn.addEventListener("click", async () => {
+        try { await navigator.clipboard.writeText(cmd);
+          const o = btn.textContent; btn.textContent = "Copié"; setTimeout(()=>btn.textContent=o,1400);
+        } catch(_){}
+      });
+      row.appendChild(code); row.appendChild(btn);
+      c.appendChild(h); c.appendChild(row);
     });
+  }
+
+  document.getElementById("platforms").addEventListener("click", e => {
+    const b = e.target.closest(".plat"); if(!b) return;
+    document.querySelectorAll(".plat").forEach(p => p.setAttribute("aria-pressed","false"));
+    b.setAttribute("aria-pressed","true"); method = b.dataset.method; render();
+  });
+  document.getElementById("sites").addEventListener("click", e => {
+    const b = e.target.closest(".pill"); if(!b) return;
+    document.querySelectorAll(".pill").forEach(p => p.setAttribute("aria-pressed","false"));
+    b.setAttribute("aria-pressed","true"); site = b.dataset.site; render();
   });
 
-  render("eu"); // défaut : Europe
+  render();
 </script>
 </body>
 </html>
