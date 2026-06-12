@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Datadog Preflight — vérifiez votre environnement avant l'agent</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600&family=Inter:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F5F6F8; --surface:#FFFFFF; --ink:#16181D; --muted:#5A6072;
+    --line:#E2E5EB; --accent:#5B4FE0; --accent-ink:#3A30A8; --accent-soft:#ECEAFB;
+    --ok:#1E9E6A; --warn:#C8881B; --err:#D14545;
+    --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Inter",system-ui,sans-serif;line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--accent-ink);text-underline-offset:3px}
+  .wrap{max-width:880px;margin:0 auto;padding:0 24px}
+
+  header{border-bottom:1px solid var(--line);background:var(--surface)}
+  .bar{display:flex;align-items:center;justify-content:space-between;height:64px}
+  .brand{display:flex;align-items:center;gap:10px;font-family:"Space Grotesk";
+    font-weight:600;font-size:17px;letter-spacing:-.01em}
+  .brand .lamp{width:11px;height:11px;border-radius:50%;background:var(--ok);
+    box-shadow:0 0 0 3px rgba(30,158,106,.16)}
+  .nav a{color:var(--muted);text-decoration:none;font-size:14px;font-weight:500}
+  .nav a:hover{color:var(--ink)}
+
+  .hero{padding:72px 0 40px}
+  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--accent-ink)}
+  h1{font-family:"Space Grotesk";font-weight:600;font-size:clamp(30px,5vw,46px);
+    line-height:1.08;letter-spacing:-.02em;margin:14px 0 0}
+  .lede{font-size:18px;color:var(--muted);max-width:60ch;margin:18px 0 0}
+
+  .card{background:var(--surface);border:1px solid var(--line);
+    border-radius:var(--radius);padding:28px;margin:22px 0}
+  .step{font-family:var(--mono);font-size:12px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--muted);margin:0 0 12px}
+  .step b{color:var(--accent-ink)}
+
+  .regions{display:flex;flex-direction:column;gap:14px}
+  .region-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+  .region-label{font-size:13px;color:var(--muted);width:74px;flex:0 0 74px}
+  .pill{font-family:var(--mono);font-size:13px;font-weight:500;cursor:pointer;
+    padding:8px 14px;border-radius:999px;border:1px solid var(--line);
+    background:var(--surface);color:var(--ink);transition:all .12s ease}
+  .pill:hover{border-color:var(--accent)}
+  .pill[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);
+    color:#fff}
+  .pill:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
+
+  .hint{font-size:13.5px;color:var(--muted);margin:16px 0 0}
+
+  .cmd{display:flex;align-items:stretch;gap:0;margin:10px 0 0;
+    border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#0E1016}
+  .cmd code{font-family:var(--mono);font-size:13.5px;color:#E7E9EF;padding:14px 16px;
+    overflow-x:auto;white-space:nowrap;flex:1;display:block}
+  .cmd code .flag{color:#9C93F0}
+  .cmd code .url{color:#7FD1A8}
+  .copy{border:0;border-left:1px solid #23262F;background:#181B22;color:#C9CCD6;
+    font-family:var(--mono);font-size:12px;padding:0 16px;cursor:pointer;
+    white-space:nowrap;transition:background .12s}
+  .copy:hover{background:#23262F}
+  .copy:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+
+  .divider{height:1px;background:var(--line);margin:24px 0}
+  .sub{font-size:14px;color:var(--muted);margin:0 0 4px}
+
+  .checklist{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+    gap:12px;margin:14px 0 0}
+  .check{display:flex;align-items:center;gap:10px;font-size:14.5px;
+    padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg)}
+  .dot{width:9px;height:9px;border-radius:50%;flex:0 0 9px;background:var(--ok)}
+
+  h2{font-family:"Space Grotesk";font-weight:600;font-size:20px;letter-spacing:-.01em;
+    margin:0 0 4px}
+
+  footer{border-top:1px solid var(--line);margin-top:48px;background:var(--surface)}
+  .foot{display:flex;flex-wrap:wrap;gap:8px 18px;justify-content:space-between;
+    padding:24px 0;font-size:13px;color:var(--muted)}
+
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+  @media (max-width:560px){
+    .region-label{width:100%;flex-basis:100%}
+    .copy{padding:0 12px}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap bar">
+    <div class="brand"><span class="lamp" aria-hidden="true"></span> Datadog Preflight</div>
+    <nav class="nav"><a href="#install">Installation</a> &nbsp; <a href="https://github.com/jbroberjot/datadog-preflight">GitHub</a></nav>
+  </div>
+</header>
+
+<main>
+  <section class="wrap hero">
+    <div class="eyebrow">Vérification avant installation</div>
+    <h1>Votre environnement est-il prêt pour l'agent Datadog ?</h1>
+    <p class="lede">Lancez un contrôle en une commande. Il teste, depuis votre propre réseau,
+      l'accès aux services Datadog et vous dit en clair ce qui bloque — avant même
+      d'installer quoi que ce soit.</p>
+  </section>
+
+  <section class="wrap" id="install">
+    <div class="card">
+      <p class="step"><b>1</b> &nbsp;Choisissez votre site Datadog</p>
+      <div class="regions" id="regions">
+        <div class="region-row">
+          <span class="region-label">États-Unis</span>
+          <button class="pill" data-site="us1" aria-pressed="false">US1</button>
+          <button class="pill" data-site="us3" aria-pressed="false">US3</button>
+          <button class="pill" data-site="us5" aria-pressed="false">US5</button>
+        </div>
+        <div class="region-row">
+          <span class="region-label">Europe</span>
+          <button class="pill" data-site="eu" aria-pressed="true">EU1</button>
+        </div>
+        <div class="region-row">
+          <span class="region-label">Asie-Pac.</span>
+          <button class="pill" data-site="ap1" aria-pressed="false">AP1</button>
+          <button class="pill" data-site="ap2" aria-pressed="false">AP2</button>
+        </div>
+        <div class="region-row">
+          <span class="region-label">Gouv.</span>
+          <button class="pill" data-site="gov" aria-pressed="false">US1-FED</button>
+        </div>
+      </div>
+      <p class="hint">Vous ne savez pas lequel ? Regardez l'adresse de votre interface Datadog :
+        <code>app.datadoghq.eu</code> &rarr; EU1, <code>app.datadoghq.com</code> &rarr; US1,
+        <code>us5.datadoghq.com</code> &rarr; US5, etc.</p>
+
+      <div class="divider"></div>
+
+      <p class="step"><b>2</b> &nbsp;Lancez la vérification</p>
+      <div class="cmd">
+        <code id="cmd-apply"></code>
+        <button class="copy" data-target="cmd-apply">Copier</button>
+      </div>
+
+      <p class="step" style="margin-top:22px"><b>3</b> &nbsp;Lisez le rapport</p>
+      <div class="cmd">
+        <code id="cmd-logs"><span class="flag">kubectl</span> logs -f job/datadog-preflight</code>
+        <button class="copy" data-target="cmd-logs">Copier</button>
+      </div>
+      <p class="hint">Le rapport s'affiche en clair, avec pour chaque blocage la cause et la marche à suivre.
+        Pour nettoyer ensuite : <code>kubectl delete job/datadog-preflight</code>.</p>
+    </div>
+
+    <div class="card">
+      <h2>Ce que le contrôle vérifie</h2>
+      <p class="sub">Depuis l'intérieur de votre cluster, là où tournera l'agent.</p>
+      <div class="checklist">
+        <div class="check"><span class="dot" aria-hidden="true"></span> Résolution DNS des services Datadog</div>
+        <div class="check"><span class="dot" aria-hidden="true"></span> Pare-feu : sortie sur le port 443</div>
+        <div class="check"><span class="dot" aria-hidden="true"></span> Détection d'un proxy</div>
+        <div class="check"><span class="dot" aria-hidden="true"></span> Joignabilité des endpoints (APM, logs, métriques…)</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Plutôt un serveur, hors Kubernetes ?</h2>
+      <p class="sub">Un script unique pour Linux et macOS, sans rien à installer.</p>
+      <p class="step" style="margin-top:14px"><b>·</b> &nbsp;Téléchargez puis lancez</p>
+      <div class="cmd">
+        <code id="cmd-host"><span class="flag">./datadog-preflight.sh</span> --site <span class="url" id="host-site">eu</span></code>
+        <button class="copy" data-target="cmd-host">Copier</button>
+      </div>
+      <p class="hint">Récupérez le script sur la
+        <a href="https://github.com/jbroberjot/datadog-preflight/releases">page des releases</a>,
+        rendez-le exécutable (<code>chmod +x</code>), puis lancez-le.</p>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap foot">
+    <span>Datadog Preflight — outil de vérification non officiel.</span>
+    <span><a href="https://github.com/jbroberjot/datadog-preflight">Code source &amp; documentation</a></span>
+  </div>
+</footer>
+
+<script>
+  // >>> Remplacez par votre dépôt GitHub (utilisateur/repo) <<<
+  const REPO = "jbroberjot/datadog-preflight";
+  const BASE = `https://raw.githubusercontent.com/${REPO}/main/deploy`;
+
+  const applyEl = document.getElementById("cmd-apply");
+  const hostSiteEl = document.getElementById("host-site");
+
+  function render(site){
+    applyEl.innerHTML =
+      `<span class="flag">kubectl</span> apply -f ` +
+      `<span class="url">${BASE}/${site}.yaml</span>`;
+    hostSiteEl.textContent = site;
+  }
+
+  document.getElementById("regions").addEventListener("click", (e) => {
+    const btn = e.target.closest(".pill");
+    if(!btn) return;
+    document.querySelectorAll(".pill").forEach(p => p.setAttribute("aria-pressed","false"));
+    btn.setAttribute("aria-pressed","true");
+    render(btn.dataset.site);
+  });
+
+  document.querySelectorAll(".copy").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const text = document.getElementById(btn.dataset.target).textContent;
+      try{
+        await navigator.clipboard.writeText(text);
+        const old = btn.textContent; btn.textContent = "Copié";
+        setTimeout(() => btn.textContent = old, 1400);
+      }catch(_){ /* clipboard indisponible : sélection manuelle */ }
+    });
+  });
+
+  render("eu"); // défaut : Europe
+</script>
+</body>
+</html>
