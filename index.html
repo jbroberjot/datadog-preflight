@@ -200,8 +200,15 @@
       <code>app.datadoghq.eu</code> &rarr; EU1, <code>app.datadoghq.com</code> &rarr; US1,
       <code>us5.datadoghq.com</code> &rarr; US5…</p>
 
-    <!-- Étape 3 : commandes -->
-    <p class="seclabel"><b>3</b> &nbsp;Lancez la vérification</p>
+    <!-- Étape 3 : type de vérification -->
+    <p class="seclabel"><b>3</b> &nbsp;Que souhaitez-vous vérifier ?</p>
+    <div class="pills" id="checks">
+      <button class="pill" data-check="connectivity" aria-pressed="true">Connectivité réseau</button>
+      <button class="pill" data-check="apikey" aria-pressed="false">Clé API</button>
+    </div>
+
+    <!-- Étape 4 : commandes -->
+    <p class="seclabel"><b>4</b> &nbsp;Lancez la vérification</p>
     <div class="panel">
       <div class="panel-head">
         <span class="ptitle" id="panel-title">Kubernetes</span>
@@ -359,6 +366,7 @@ kubectl logs &lt;nom-du-pod&gt; -n datadog</code><button class="copy">Copier</bu
 
   const SITE_NAMES = {us1:"US1",us3:"US3",us5:"US5",eu:"EU1",ap1:"AP1",ap2:"AP2",gov:"US1-FED"};
   const METHOD_NAMES = {k8s:"Kubernetes",linux:"Linux / macOS",windows:"Windows"};
+  const CHECK_NAMES = {connectivity:"Connectivité réseau",apikey:"Clé API"};
   const SITE_URLS = {
     us1:"datadoghq.com", us3:"us3.datadoghq.com", us5:"us5.datadoghq.com",
     eu:"datadoghq.eu", ap1:"ap1.datadoghq.com", ap2:"ap2.datadoghq.com", gov:"ddog-gov.com"
@@ -378,34 +386,43 @@ kubectl logs &lt;nom-du-pod&gt; -n datadog</code><button class="copy">Copier</bu
   #   containerCollectAll: true`;
   }
 
-  // Construit les étapes (label + commande) pour une plateforme et un site.
-  function buildSteps(method, site){
-    if(method === "k8s"){
+  function buildSteps(method, site, check){
+    if(check === "apikey"){
+      const api = `https://api.${SITE_URLS[site]}`;
+      if(method === "k8s") return [
+        ["Lancer le test", `kubectl run dd-api-test --image=curlimages/curl:latest --restart=Never -- curl -s "${api}/api/v1/validate" -H "DD-API-KEY: VOTRE_CLE_API"`],
+        ["Lire le résultat", `kubectl logs dd-api-test`],
+        ["Nettoyer", `kubectl delete pod dd-api-test`],
+      ];
+      if(method === "linux") return [
+        ["Tester la clé API", `curl -s "${api}/api/v1/validate" -H "DD-API-KEY: VOTRE_CLE_API"`],
+      ];
       return [
-        ["Déployer la vérification", `kubectl apply -f ${RAW}/deploy/${site}.yaml`],
-        ["Lire le rapport",          `kubectl logs -f job/datadog-preflight`],
-        ["Nettoyer (après lecture)", `kubectl delete -f ${RAW}/deploy/${site}.yaml`],
+        ["Tester la clé API", `Invoke-RestMethod "${api}/api/v1/validate" -Headers @{"DD-API-KEY"="VOTRE_CLE_API"}`],
       ];
     }
-    if(method === "linux"){
-      return [
-        ["Télécharger le script", `curl -fsSL -o datadog-preflight.sh ${RAW}/datadog-preflight.sh`],
-        ["Lancer la vérification", `chmod +x datadog-preflight.sh && ./datadog-preflight.sh --site ${site}`],
-      ];
-    }
-    // windows
+    // connectivity
+    if(method === "k8s") return [
+      ["Déployer la vérification", `kubectl apply -f ${RAW}/deploy/${site}.yaml`],
+      ["Lire le rapport",          `kubectl logs -f job/datadog-preflight`],
+      ["Nettoyer (après lecture)", `kubectl delete -f ${RAW}/deploy/${site}.yaml`],
+    ];
+    if(method === "linux") return [
+      ["Télécharger le script", `curl -fsSL -o datadog-preflight.sh ${RAW}/datadog-preflight.sh`],
+      ["Lancer la vérification", `chmod +x datadog-preflight.sh && ./datadog-preflight.sh --site ${site}`],
+    ];
     return [
       ["Télécharger le script", `irm ${RAW}/datadog-preflight.ps1 -OutFile datadog-preflight.ps1`],
       ["Lancer la vérification", `powershell -ExecutionPolicy Bypass -File .\\datadog-preflight.ps1 -Site ${site}`],
     ];
   }
 
-  let method = "linux", site = "us1";
+  let method = "linux", site = "us1", check = "connectivity";
 
   function render(){
     document.getElementById("panel-title").textContent = METHOD_NAMES[method];
-    document.getElementById("panel-tag").textContent = "site " + SITE_NAMES[site];
-    const steps = buildSteps(method, site);
+    document.getElementById("panel-tag").textContent = "site " + SITE_NAMES[site] + " · " + CHECK_NAMES[check];
+    const steps = buildSteps(method, site, check);
     const c = document.getElementById("steps");
     c.innerHTML = "";
     steps.forEach(([label, cmd], i) => {
@@ -442,8 +459,13 @@ kubectl logs &lt;nom-du-pod&gt; -n datadog</code><button class="copy">Copier</bu
   });
   document.getElementById("sites").addEventListener("click", e => {
     const b = e.target.closest(".pill"); if(!b) return;
-    document.querySelectorAll(".pill").forEach(p => p.setAttribute("aria-pressed","false"));
+    document.querySelectorAll("#sites .pill").forEach(p => p.setAttribute("aria-pressed","false"));
     b.setAttribute("aria-pressed","true"); site = b.dataset.site; render();
+  });
+  document.getElementById("checks").addEventListener("click", e => {
+    const b = e.target.closest(".pill"); if(!b) return;
+    document.querySelectorAll("#checks .pill").forEach(p => p.setAttribute("aria-pressed","false"));
+    b.setAttribute("aria-pressed","true"); check = b.dataset.check; render();
   });
 
   document.getElementById("install-guide").addEventListener("click", async e => {
