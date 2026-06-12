@@ -93,6 +93,32 @@
   .foot{display:flex;flex-wrap:wrap;gap:8px 18px;justify-content:space-between;padding:24px 0;
     font-size:13px;color:var(--muted)}
 
+  /* --- Installation guide --- */
+  .guide{margin:4px 0 32px}
+  .guide>p{font-size:14px;color:var(--muted);margin:0 0 12px;line-height:1.6}
+  .gstep{margin:24px 0 0}
+  .gstep-title{font-family:"Space Grotesk";font-weight:600;font-size:16px;letter-spacing:-.01em;
+    margin:0 0 10px;display:flex;align-items:center;gap:10px}
+  .gstep-num{background:var(--accent);color:#fff;font-family:var(--mono);font-size:11px;
+    min-width:22px;height:22px;border-radius:50%;display:flex;align-items:center;
+    justify-content:center;font-weight:600;flex:0 0 22px}
+  .gstep>p{font-size:14px;color:var(--muted);margin:0 0 10px;line-height:1.6}
+  .gstep>p code,.gnote code{font-family:var(--mono);font-size:12px;background:var(--bg);
+    border:1px solid var(--line);border-radius:4px;padding:1px 5px}
+  .gnote{background:var(--accent-soft);border-left:3px solid var(--accent);
+    border-radius:0 8px 8px 0;padding:11px 15px;margin:10px 0;font-size:13px;
+    color:var(--ink);line-height:1.5}
+  .glist{margin:6px 0 12px;padding-left:20px;font-size:14px;color:var(--ink)}
+  .glist li{line-height:1.6;margin-bottom:4px}
+  .glist li code{font-family:var(--mono);font-size:12px;background:var(--bg);
+    border:1px solid var(--line);border-radius:4px;padding:1px 5px}
+  .gcmdlabel{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--muted);margin:12px 0 6px}
+  .gsub{font-family:"Space Grotesk";font-weight:600;font-size:14px;
+    margin:18px 0 8px;color:var(--ink)}
+  .glinks{font-size:14px;display:flex;flex-direction:column;gap:6px;margin:8px 0}
+  #install-guide .cmd code{white-space:pre;line-height:1.5}
+
   @media (prefers-reduced-motion:reduce){*{transition:none!important}}
   @media (max-width:680px){
     .platforms{grid-template-columns:1fr}
@@ -195,6 +221,129 @@
       <li>Endpoints APM, logs, métriques…</li>
     </ul>
   </section>
+
+  <section class="wrap" id="install-guide">
+    <p class="seclabel" style="margin-top:36px">Guide d'installation de l'agent</p>
+
+    <!-- Kubernetes -->
+    <div id="guide-k8s" class="guide" style="display:none">
+      <p>Installation de l'agent Datadog sur Kubernetes avec <strong>Helm</strong>.</p>
+
+      <p><strong>Quelques définitions :</strong></p>
+      <ul class="glist">
+        <li><strong>Kubernetes (K8s)</strong> — système qui orchestre vos applications dans des conteneurs.</li>
+        <li><strong>Helm</strong> — équivalent d'un "App Store" pour Kubernetes : installe des applications complexes en quelques commandes.</li>
+        <li><strong>Agent Datadog</strong> — programme qui tourne sur votre cluster et envoie métriques, logs et traces vers Datadog.</li>
+      </ul>
+
+      <p><strong>Prérequis :</strong></p>
+      <ul class="glist">
+        <li>Un cluster Kubernetes fonctionnel</li>
+        <li><code>kubectl</code> installé et configuré</li>
+        <li><code>helm</code> installé</li>
+        <li>Une clé API Datadog — <em>Organization Settings › API Keys</em></li>
+      </ul>
+
+      <div class="gstep">
+        <div class="gstep-title"><span class="gstep-num">1</span> Ajouter le dépôt Helm Datadog</div>
+        <p>Helm fonctionne avec des dépôts (catalogues d'applications). On commence par enregistrer le dépôt officiel Datadog.</p>
+        <div class="cmd"><code>helm repo add datadog https://helm.datadoghq.com
+helm repo update</code><button class="copy">Copier</button></div>
+      </div>
+
+      <div class="gstep">
+        <div class="gstep-title"><span class="gstep-num">2</span> Créer un namespace dédié</div>
+        <p>Un <strong>namespace</strong> est un espace isolé dans Kubernetes. On en crée un dédié pour garder le cluster organisé.</p>
+        <div class="cmd"><code>kubectl create namespace datadog</code><button class="copy">Copier</button></div>
+      </div>
+
+      <div class="gstep">
+        <div class="gstep-title"><span class="gstep-num">3</span> Stocker la clé API de façon sécurisée</div>
+        <p>On ne met jamais une clé API directement dans un fichier de configuration. On utilise un <strong>Secret</strong> Kubernetes.</p>
+        <div class="cmd"><code>kubectl -n datadog create secret generic datadog-secret \
+  --from-literal api-key=VOTRE_CLE_API_ICI</code><button class="copy">Copier</button></div>
+        <div class="gnote">Remplacez <code>VOTRE_CLE_API_ICI</code> par votre vraie clé API Datadog.</div>
+      </div>
+
+      <div class="gstep">
+        <div class="gstep-title"><span class="gstep-num">4</span> Créer le fichier de configuration</div>
+        <p>Créez un fichier <code>datadog-values.yaml</code> avec le contenu suivant. Le site est automatiquement adapté à votre sélection.</p>
+        <div class="cmd"><code id="guide-yaml"></code><button class="copy">Copier</button></div>
+        <div class="gnote"><code>clusterName</code> est un nom libre uniquement utilisé pour l'affichage dans Datadog, indépendant du nom réel du cluster. Pour activer les logs, décommentez le bloc <code>logs</code>.</div>
+      </div>
+
+      <div class="gstep">
+        <div class="gstep-title"><span class="gstep-num">5</span> Installer l'agent</div>
+        <p>On lance l'installation avec Helm en lui indiquant notre fichier de configuration.</p>
+        <div class="cmd"><code>helm install datadog-agent \
+  -f datadog-values.yaml \
+  datadog/datadog \
+  --namespace datadog</code><button class="copy">Copier</button></div>
+      </div>
+
+      <div class="gstep">
+        <div class="gstep-title"><span class="gstep-num">6</span> Vérifier l'installation</div>
+        <p>Quelques minutes après l'installation, vérifiez que les pods sont bien en statut <strong>Running</strong>.</p>
+        <p class="gcmdlabel">Lister les pods</p>
+        <div class="cmd"><code>kubectl get pods -n datadog</code><button class="copy">Copier</button></div>
+        <p class="gcmdlabel">Diagnostiquer un pod en erreur</p>
+        <div class="cmd"><code>kubectl describe pod &lt;nom-du-pod&gt; -n datadog</code><button class="copy">Copier</button></div>
+      </div>
+
+      <div class="gstep">
+        <div class="gstep-title"><span class="gstep-num">7</span> Vérifier dans l'interface Datadog</div>
+        <p>Rendez-vous sur <a id="guide-app-link" href="https://app.datadoghq.com">app.datadoghq.com</a> et naviguez vers <strong>Infrastructure › Kubernetes</strong>. Votre cluster devrait apparaître dans les minutes qui suivent.</p>
+      </div>
+
+      <div class="gstep">
+        <div class="gstep-title">Mettre à jour la configuration</div>
+        <p>Modifiez <code>datadog-values.yaml</code> puis lancez :</p>
+        <div class="cmd"><code>helm upgrade datadog-agent \
+  -f datadog-values.yaml \
+  datadog/datadog \
+  --namespace datadog</code><button class="copy">Copier</button></div>
+      </div>
+
+      <div class="gstep">
+        <div class="gstep-title">Désinstaller l'agent</div>
+        <div class="cmd"><code>helm uninstall datadog-agent --namespace datadog</code><button class="copy">Copier</button></div>
+      </div>
+
+      <div class="gstep">
+        <div class="gstep-title">Résolution des problèmes courants</div>
+        <p class="gsub">Les pods ne démarrent pas</p>
+        <div class="cmd"><code>kubectl describe pod &lt;nom-du-pod&gt; -n datadog
+kubectl logs &lt;nom-du-pod&gt; -n datadog</code><button class="copy">Copier</button></div>
+        <p class="gsub">Erreur "secret not found"</p>
+        <p>Vérifiez que le secret a bien été créé dans le bon namespace :</p>
+        <div class="cmd"><code>kubectl get secret datadog-secret -n datadog</code><button class="copy">Copier</button></div>
+        <p class="gsub">Le cluster n'apparaît pas dans Datadog</p>
+        <ul class="glist">
+          <li>Vérifiez que votre clé API est correcte</li>
+          <li>Vérifiez que les pods sont en statut <strong>Running</strong></li>
+          <li>Attendez 5 minutes, la remontée des données peut prendre du temps</li>
+        </ul>
+      </div>
+
+      <div class="gstep">
+        <div class="gstep-title">Pour aller plus loin</div>
+        <div class="glinks">
+          <a href="https://docs.datadoghq.com/containers/kubernetes/">Documentation officielle Datadog Kubernetes</a>
+          <a href="https://github.com/DataDog/helm-charts/blob/main/charts/datadog/values.yaml">Toutes les options de configuration Helm</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Linux (à venir) -->
+    <div id="guide-linux" class="guide">
+      <p class="hint">Guide d'installation Linux / macOS à venir.</p>
+    </div>
+
+    <!-- Windows (à venir) -->
+    <div id="guide-windows" class="guide" style="display:none">
+      <p class="hint">Guide d'installation Windows à venir.</p>
+    </div>
+  </section>
 </main>
 
 <footer>
@@ -210,6 +359,24 @@
 
   const SITE_NAMES = {us1:"US1",us3:"US3",us5:"US5",eu:"EU1",ap1:"AP1",ap2:"AP2",gov:"US1-FED"};
   const METHOD_NAMES = {k8s:"Kubernetes",linux:"Linux / macOS",windows:"Windows"};
+  const SITE_URLS = {
+    us1:"datadoghq.com", us3:"us3.datadoghq.com", us5:"us5.datadoghq.com",
+    eu:"datadoghq.eu", ap1:"ap1.datadoghq.com", ap2:"ap2.datadoghq.com", gov:"ddog-gov.com"
+  };
+
+  function buildGuideYaml(site){
+    return `datadog:
+  site: "${SITE_URLS[site]}"
+  clusterName: "nom-affichage-datadog"
+  apiKeyExistingSecret: "datadog-secret"
+  clusterChecks:
+    enabled: true
+  orchestratorExplorer:
+    enabled: true
+  # logs:
+  #   enabled: true
+  #   containerCollectAll: true`;
+  }
 
   // Construit les étapes (label + commande) pour une plateforme et un site.
   function buildSteps(method, site){
@@ -254,6 +421,18 @@
       row.appendChild(code); row.appendChild(btn);
       c.appendChild(h); c.appendChild(row);
     });
+    // guide visibility + dynamic content
+    ["k8s","linux","windows"].forEach(m => {
+      const el = document.getElementById("guide-" + m);
+      if (el) el.style.display = m === method ? "" : "none";
+    });
+    const yamlEl = document.getElementById("guide-yaml");
+    if (yamlEl) yamlEl.textContent = buildGuideYaml(site);
+    const appLink = document.getElementById("guide-app-link");
+    if (appLink) {
+      const u = "https://app." + SITE_URLS[site];
+      appLink.href = u; appLink.textContent = "app." + SITE_URLS[site];
+    }
   }
 
   document.getElementById("platforms").addEventListener("click", e => {
@@ -265,6 +444,17 @@
     const b = e.target.closest(".pill"); if(!b) return;
     document.querySelectorAll(".pill").forEach(p => p.setAttribute("aria-pressed","false"));
     b.setAttribute("aria-pressed","true"); site = b.dataset.site; render();
+  });
+
+  document.getElementById("install-guide").addEventListener("click", async e => {
+    const btn = e.target.closest(".copy");
+    if (!btn) return;
+    const code = btn.parentElement.querySelector("code");
+    if (!code) return;
+    try {
+      await navigator.clipboard.writeText(code.textContent);
+      const o = btn.textContent; btn.textContent = "Copié"; setTimeout(()=>btn.textContent=o,1400);
+    } catch(_){}
   });
 
   render();
