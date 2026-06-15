@@ -52,7 +52,7 @@
   .plat:focus-visible{outline:2px solid var(--accent-ink);outline-offset:3px}
   .plat[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);
     box-shadow:0 4px 16px -8px rgba(91,79,224,.4)}
-  .plat .ic{width:22px;height:22px;color:var(--accent-ink);flex:0 0 22px}
+  .plat .ic{width:28px;height:28px;flex:0 0 28px}
   .plat .pname{font-family:"Space Grotesk";font-weight:600;font-size:14px}
   .plat .pdesc{font-size:11px;color:var(--muted);font-family:var(--mono)}
 
@@ -73,6 +73,12 @@
   .panel-head{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line)}
   .panel-head .ptitle{font-family:"Space Grotesk";font-weight:600}
   .panel-head .ptag{font-family:var(--mono);font-size:12px;color:var(--muted)}
+  .check-toggle{display:flex;gap:4px;margin-left:auto}
+  .check-btn{font-family:var(--mono);font-size:11px;font-weight:500;cursor:pointer;padding:4px 10px;
+    border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--muted);
+    transition:all .12s}
+  .check-btn:hover{border-color:var(--accent);color:var(--ink)}
+  .check-btn[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
   .steps{padding:18px}
   .stepn{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
     color:var(--muted);margin:0 0 8px}
@@ -187,9 +193,21 @@
     <p class="seclabel"><b>1</b> &nbsp;<span data-i18n="step1.label">Où voulez-vous lancer la vérification ?</span></p>
     <div class="platforms" id="platforms">
       <button class="plat" data-method="linux" aria-pressed="true">
-        <svg class="ic" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <rect x="6" y="9" width="36" height="30" rx="4"/>
-          <path d="M14 20l6 5-6 5M24 31h9"/>
+        <!-- Tux penguin (Linux) -->
+        <svg class="ic" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <ellipse cx="24" cy="14" rx="10" ry="12" fill="#2c2c2c"/>
+          <ellipse cx="24" cy="14" rx="6" ry="8" fill="#f5f5f5"/>
+          <circle cx="20" cy="11" r="2" fill="#f5f5f5"/>
+          <circle cx="28" cy="11" r="2" fill="#f5f5f5"/>
+          <circle cx="20.5" cy="11" r="1" fill="#1a1a1a"/>
+          <circle cx="28.5" cy="11" r="1" fill="#1a1a1a"/>
+          <ellipse cx="24" cy="16" rx="3" ry="2" fill="#f5a623"/>
+          <ellipse cx="24" cy="32" rx="12" ry="13" fill="#2c2c2c"/>
+          <ellipse cx="24" cy="34" rx="8" ry="9" fill="#f5f5f5"/>
+          <ellipse cx="18" cy="43" rx="5" ry="3" fill="#f5a623"/>
+          <ellipse cx="30" cy="43" rx="5" ry="3" fill="#f5a623"/>
+          <path d="M14 25 Q10 28 11 34" stroke="#2c2c2c" stroke-width="3" fill="none" stroke-linecap="round"/>
+          <path d="M34 25 Q38 28 37 34" stroke="#2c2c2c" stroke-width="3" fill="none" stroke-linecap="round"/>
         </svg>
         <div>
           <div class="pname">Linux / macOS</div>
@@ -197,11 +215,12 @@
         </div>
       </button>
       <button class="plat" data-method="windows" aria-pressed="false">
-        <svg class="ic" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" aria-hidden="true">
-          <rect x="7" y="7" width="15" height="15" rx="1.5"/>
-          <rect x="26" y="7" width="15" height="15" rx="1.5"/>
-          <rect x="7" y="26" width="15" height="15" rx="1.5"/>
-          <rect x="26" y="26" width="15" height="15" rx="1.5"/>
+        <!-- Windows logo -->
+        <svg class="ic" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path fill="#F25022" d="M4 4h19v19H4z"/>
+          <path fill="#7FBA00" d="M25 4h19v19H25z"/>
+          <path fill="#00A4EF" d="M4 25h19v19H4z"/>
+          <path fill="#FFB900" d="M25 25h19v19H25z"/>
         </svg>
         <div>
           <div class="pname">Windows</div>
@@ -209,10 +228,18 @@
         </div>
       </button>
       <button class="plat" data-method="k8s" aria-pressed="false">
-        <svg class="ic" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" aria-hidden="true">
-          <path d="M24 5l16 7.4v15.2L24 35 8 27.6V12.4z"/>
-          <circle cx="24" cy="20" r="5"/>
-          <path d="M24 9v6M24 25v7M14 16l5 3M34 16l-5 3M16 27l4-3M32 27l-4-3" stroke-width="1.8"/>
+        <!-- Kubernetes logo -->
+        <svg class="ic" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <circle cx="24" cy="24" r="22" fill="#326CE5"/>
+          <circle cx="24" cy="24" r="7" fill="none" stroke="#fff" stroke-width="2.5"/>
+          <line x1="24" y1="2" x2="24" y2="11" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="24" y1="37" x2="24" y2="46" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="2" y1="24" x2="11" y2="24" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="37" y1="24" x2="46" y2="24" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="7.5" y1="7.5" x2="14.3" y2="14.3" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="33.7" y1="33.7" x2="40.5" y2="40.5" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="40.5" y1="7.5" x2="33.7" y2="14.3" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="14.3" y1="33.7" x2="7.5" y2="40.5" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>
         </svg>
         <div>
           <div class="pname">Kubernetes</div>
@@ -238,19 +265,16 @@
     </div>
     <p class="hint" data-i18n-html="step2.hint">Dans le doute, regardez l'adresse de votre interface Datadog : <code>app.datadoghq.eu</code> &rarr; EU1, <code>app.datadoghq.com</code> &rarr; US1, <code>us5.datadoghq.com</code> &rarr; US5…</p>
 
-    <!-- Étape 3 : type de vérification -->
-    <p class="seclabel"><b>3</b> &nbsp;<span data-i18n="step3.label">Que souhaitez-vous vérifier ?</span></p>
-    <div class="pills" id="checks">
-      <button class="pill" data-check="connectivity" aria-pressed="true" data-i18n="check.connectivity">Connectivité réseau</button>
-      <button class="pill" data-check="apikey" aria-pressed="false" data-i18n="check.apikey">Clé API</button>
-    </div>
-
-    <!-- Étape 4 : commandes -->
-    <p class="seclabel"><b>4</b> &nbsp;<span data-i18n="step4.label">Lancez la vérification</span></p>
+    <!-- Étape 3 : commandes -->
+    <p class="seclabel"><b>3</b> &nbsp;<span data-i18n="step4.label">Lancez la vérification</span></p>
     <div class="panel">
       <div class="panel-head">
-        <span class="ptitle" id="panel-title">Kubernetes</span>
-        <span class="ptag" id="panel-tag">site EU1</span>
+        <span class="ptitle" id="panel-title">Linux / macOS</span>
+        <span class="ptag" id="panel-tag">site US1</span>
+        <div class="check-toggle" id="check-toggle" role="group">
+          <button class="check-btn" data-check="connectivity" aria-pressed="true" data-i18n="check.connectivity">Connectivité réseau</button>
+          <button class="check-btn" data-check="apikey" aria-pressed="false" data-i18n="check.apikey">Clé API</button>
+        </div>
       </div>
       <div class="steps" id="steps"></div>
     </div>
@@ -467,9 +491,9 @@
     document.querySelectorAll("#sites .pill").forEach(p => p.setAttribute("aria-pressed","false"));
     b.setAttribute("aria-pressed","true"); site = b.dataset.site; render();
   });
-  document.getElementById("checks").addEventListener("click", e => {
-    const b = e.target.closest(".pill"); if(!b) return;
-    document.querySelectorAll("#checks .pill").forEach(p => p.setAttribute("aria-pressed","false"));
+  document.getElementById("check-toggle").addEventListener("click", e => {
+    const b = e.target.closest(".check-btn"); if(!b) return;
+    document.querySelectorAll("#check-toggle .check-btn").forEach(p => p.setAttribute("aria-pressed","false"));
     b.setAttribute("aria-pressed","true"); check = b.dataset.check; render();
   });
   document.querySelector(".lang-toggle").addEventListener("click", e => {
