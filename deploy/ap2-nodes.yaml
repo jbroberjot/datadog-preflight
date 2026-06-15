@@ -1,0 +1,414 @@
+# ---------------------------------------------------------------------------
+# Datadog Preflight Checker — site ap2, PAR NŒUD (manifeste autoporté, GÉNÉRÉ)
+# Ne pas éditer à la main : modifier datadog-preflight-posix.sh puis relancer ./generate.sh
+#
+#   kubectl apply -f https://raw.githubusercontent.com/jbroberjot/datadog-preflight/main/deploy/ap2-nodes.yaml
+#   kubectl logs -l app=datadog-preflight-nodes --prefix --tail=-1
+#   kubectl delete -f https://raw.githubusercontent.com/jbroberjot/datadog-preflight/main/deploy/ap2-nodes.yaml
+# ---------------------------------------------------------------------------
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: datadog-preflight-script
+  labels: {app: datadog-preflight-nodes}
+data:
+  datadog-preflight.sh: |
+    #!/bin/sh
+    #
+    # datadog-preflight-posix.sh
+    # ---------------------------------------------------------------------------
+    # Variante POSIX / busybox-compatible du Datadog Preflight Checker.
+    #
+    # Conçue pour être montée depuis un ConfigMap et exécutée sur une image de base
+    # déjà présente dans le cluster (busybox, alpine, ...), SANS image custom à
+    # distribuer ni à recopier dans un registre interne.
+    #
+    # Différences avec la version bash :
+    #   - test TCP via `nc` (pas /dev/tcp, indisponible en ash)
+    #   - résolution DNS via `nslookup` (présent dans busybox)
+    #   - validation de clé API en best-effort (curl requis, sinon sautée)
+    #
+    # Usage :
+    #   sh datadog-preflight-posix.sh --site eu --network-only
+    # ---------------------------------------------------------------------------
+    
+    set -u
+    
+    VERSION="0.1.0"
+    
+    # --------------------------------------------------------------------------
+    # Paramètres par défaut
+    # --------------------------------------------------------------------------
+    SITE_INPUT="us1"
+    API_KEY=""
+    OUTPUT_JSON=false
+    USE_COLOR=true
+    TIMEOUT=3               # secondes par test réseau
+    MIN_DISK_GB=2
+    CHECK_LEGACY_TCP=false
+    NETWORK_ONLY=false
+    
+    PASS_COUNT=0
+    WARN_COUNT=0
+    FAIL_COUNT=0
+    JSON_ITEMS=""
+    
+    usage() {
+      cat <<EOF
+    Datadog Preflight Checker (POSIX) v${VERSION}
+    
+    Variante compatible busybox/ash, destinée au ConfigMap Kubernetes.
+    
+    OPTIONS :
+      --site <site>      us1 (défaut), eu, us3, us5, ap1, ap2, gov
+      --api-key <cle>    Clé API (ou variable DD_API_KEY). Validation best-effort.
+      --json             Sortie JSON.
+      --no-color         Désactive les couleurs.
+      --timeout <sec>    Délai par test réseau (défaut : ${TIMEOUT}s).
+      --check-legacy-tcp Teste aussi le canal logs TCP héritage (port 10516, US1).
+      --network-only     Ne teste que le réseau (recommandé en pod).
+      -h, --help         Affiche cette aide.
+    EOF
+    }
+    
+    # --------------------------------------------------------------------------
+    # Arguments
+    # --------------------------------------------------------------------------
+    while [ $# -gt 0 ]; do
+      case "$1" in
+        --site)      SITE_INPUT="${2:-}"; shift 2 ;;
+        --api-key)   API_KEY="${2:-}"; shift 2 ;;
+        --json)      OUTPUT_JSON=true; shift ;;
+        --no-color)  USE_COLOR=false; shift ;;
+        --timeout)   TIMEOUT="${2:-3}"; shift 2 ;;
+        --check-legacy-tcp) CHECK_LEGACY_TCP=true; shift ;;
+        --network-only) NETWORK_ONLY=true; shift ;;
+        -h|--help)   usage; exit 0 ;;
+        *)           echo "Argument inconnu : $1" >&2; usage >&2; exit 2 ;;
+      esac
+    done
+    
+    [ "$OUTPUT_JSON" = true ] && USE_COLOR=false
+    
+    if [ -z "$API_KEY" ] && [ -n "${DD_API_KEY:-}" ]; then
+      API_KEY="$DD_API_KEY"
+    fi
+    
+    # --------------------------------------------------------------------------
+    # Couleurs (printf, compatible ash)
+    # --------------------------------------------------------------------------
+    if [ "$USE_COLOR" = true ] && [ -t 1 ]; then
+      C_GREEN=$(printf '\033[0;32m'); C_YELLOW=$(printf '\033[0;33m')
+      C_RED=$(printf '\033[0;31m');   C_BLUE=$(printf '\033[0;34m')
+      C_BOLD=$(printf '\033[1m');     C_DIM=$(printf '\033[2m')
+      C_RESET=$(printf '\033[0m')
+    else
+      C_GREEN=""; C_YELLOW=""; C_RED=""; C_BLUE=""; C_BOLD=""; C_DIM=""; C_RESET=""
+    fi
+    
+    # --------------------------------------------------------------------------
+    # Site -> domaine
+    # --------------------------------------------------------------------------
+    case "$(echo "$SITE_INPUT" | tr 'A-Z' 'a-z')" in
+      us1|us|datadoghq.com) SITE="datadoghq.com";     SITE_NAME="US1" ;;
+      eu|eu1)               SITE="datadoghq.eu";      SITE_NAME="EU1" ;;
+      us3)                  SITE="us3.datadoghq.com"; SITE_NAME="US3" ;;
+      us5)                  SITE="us5.datadoghq.com"; SITE_NAME="US5" ;;
+      ap1)                  SITE="ap1.datadoghq.com"; SITE_NAME="AP1" ;;
+      ap2)                  SITE="ap2.datadoghq.com"; SITE_NAME="AP2" ;;
+      gov|fed|us1-fed)      SITE="ddog-gov.com";      SITE_NAME="GOV" ;;
+      *) echo "Site inconnu : '$SITE_INPUT'." >&2; exit 2 ;;
+    esac
+    
+    # --------------------------------------------------------------------------
+    # JSON
+    # --------------------------------------------------------------------------
+    json_escape() {
+      # échappe \ et " et remplace les sauts de ligne par des espaces
+      printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' | tr '\n' ' '
+    }
+    
+    add_json() {
+      if [ -z "$JSON_ITEMS" ]; then
+        JSON_ITEMS="$1"
+      else
+        JSON_ITEMS="$JSON_ITEMS,$1"
+      fi
+    }
+    
+    record() {
+      status="$1"; cat="$2"; label="$3"; msg="$4"; fix="${5:-}"; doc="${6:-}"; req="${7:-}"
+    
+      case "$status" in
+        PASS) PASS_COUNT=$((PASS_COUNT+1)) ;;
+        WARN) WARN_COUNT=$((WARN_COUNT+1)) ;;
+        FAIL) FAIL_COUNT=$((FAIL_COUNT+1)) ;;
+      esac
+    
+      [ "$req" = req ] && required=true || required=false
+    
+      if [ "$OUTPUT_JSON" = true ]; then
+        add_json "{\"status\":\"$status\",\"required\":$required,\"category\":\"$(json_escape "$cat")\",\"target\":\"$(json_escape "$label")\",\"message\":\"$(json_escape "$msg")\",\"suggestion\":\"$(json_escape "$fix")\",\"doc\":\"$(json_escape "$doc")\"}"
+        return
+      fi
+    
+      case "$status" in
+        PASS) mark="[v]"; color="$C_GREEN" ;;
+        WARN) mark="[!]"; color="$C_YELLOW" ;;
+        FAIL) mark="[x]"; color="$C_RED" ;;
+      esac
+    
+      printf "%s%s%s  %-9s %-38s %s\n" "$color" "$mark" "$C_RESET" "$cat" "$label" "$msg"
+      if [ "$status" != PASS ]; then
+        [ -n "$fix" ] && printf "    %s> Comment corriger :%s %s\n" "$C_DIM" "$C_RESET" "$fix"
+        [ -n "$doc" ] && printf "    %s> Documentation :%s    %s\n" "$C_DIM" "$C_RESET" "$doc"
+        echo
+      fi
+    }
+    
+    # --------------------------------------------------------------------------
+    # Détection des capacités de nc (une seule fois)
+    # --------------------------------------------------------------------------
+    NC_AVAILABLE=false
+    NC_HAS_Z=false
+    if command -v nc >/dev/null 2>&1; then
+      NC_AVAILABLE=true
+      # Teste si `nc -z` est supporté (OpenBSD/ncat oui, busybox non).
+      probe="$(nc -z -w1 127.0.0.1 1 2>&1)"
+      case "$probe" in
+        *nvalid*|*nknown*|*llegal*|*sage:*) NC_HAS_Z=false ;;
+        *) NC_HAS_Z=true ;;
+      esac
+    fi
+    
+    # Résolution DNS portable (nslookup d'abord, présent dans busybox)
+    # Retour : 0 = résolu, 1 = échec, 2 = aucun résolveur disponible
+    resolve_dns() {
+      host="$1"
+      if command -v nslookup >/dev/null 2>&1; then
+        nslookup "$host" >/dev/null 2>&1 && return 0
+        return 1
+      fi
+      if command -v getent >/dev/null 2>&1; then
+        getent hosts "$host" >/dev/null 2>&1 && return 0
+        return 1
+      fi
+      if command -v python3 >/dev/null 2>&1; then
+        python3 -c 'import socket,sys; socket.gethostbyname(sys.argv[1])' "$host" >/dev/null 2>&1 && return 0
+        return 1
+      fi
+      return 2
+    }
+    
+    # Test TCP. Chemin rapide si nc -z, sinon repli busybox avec garde-fou timeout.
+    check_tcp() {
+      host="$1"; port="$2"
+      [ "$NC_AVAILABLE" = true ] || return 2
+    
+      if [ "$NC_HAS_Z" = true ]; then
+        nc -z -w "$TIMEOUT" "$host" "$port" >/dev/null 2>&1
+        return $?
+      fi
+    
+      # busybox nc : pas de -z. On ferme stdin (/dev/null) pour que nc quitte,
+      # et on plafonne avec `timeout` (un peu plus long que -w) comme garde-fou
+      # contre un socket maintenu ouvert par un endpoint TLS.
+      if command -v timeout >/dev/null 2>&1; then
+        timeout "$((TIMEOUT + 2))" nc -w "$TIMEOUT" "$host" "$port" </dev/null >/dev/null 2>&1
+        rc=$?
+        # timeout tue (124) => on considère que le socket s'est ouvert mais est
+        # resté silencieux : la connexion TCP a réussi.
+        [ "$rc" -eq 124 ] && return 0
+        return "$rc"
+      fi
+      nc -w "$TIMEOUT" "$host" "$port" </dev/null >/dev/null 2>&1
+    }
+    
+    check_endpoint() {
+      host="$1"; port="$2"; product="$3"; critical="${4:-true}"
+      label="${host}:${port}"
+      fail_status="FAIL"; req="req"
+      if [ "$critical" = "false" ]; then fail_status="WARN"; req="opt"; fi
+    
+      resolve_dns "$host"; dns_rc=$?
+      if [ "$dns_rc" -eq 1 ]; then
+        record "$fail_status" "DNS" "$host" "résolution impossible ($product)" \
+          "Vérifiez que votre DNS/proxy autorise ce domaine. Ajoutez *.${SITE} à la liste d'autorisation." \
+          "https://docs.datadoghq.com/agent/configuration/network/" "$req"
+        return
+      fi
+      # dns_rc=2 : aucun résolveur -> on laisse le test TCP juger.
+    
+      check_tcp "$host" "$port"; tcp_rc=$?
+      if [ "$tcp_rc" -eq 0 ]; then
+        record "PASS" "RÉSEAU" "$label" "accessible ($product)" "" "" "$req"
+      elif [ "$tcp_rc" -eq 2 ]; then
+        record "WARN" "RÉSEAU" "$label" "test impossible : 'nc' absent de l'image" \
+          "Utilisez une image de base contenant 'nc' (busybox en fournit un)." "" "$req"
+      else
+        record "$fail_status" "RÉSEAU" "$label" "connexion refusée ou bloquée ($product)" \
+          "Ouvrez le port TCP $port sortant vers $host dans votre firewall ou proxy." \
+          "https://docs.datadoghq.com/agent/configuration/network/" "$req"
+      fi
+    }
+    
+    print_header() {
+      [ "$OUTPUT_JSON" = true ] && return
+      echo
+      printf "%s========================================%s\n" "$C_BOLD" "$C_RESET"
+      printf "%s  Datadog Preflight Checker%s   [site %s]\n" "$C_BOLD" "$C_RESET" "$SITE_NAME"
+      printf "%s========================================%s\n" "$C_BOLD" "$C_RESET"
+      printf "%s[v] ok   [!] avertissement (non bloquant)   [x] bloquant%s\n" "$C_DIM" "$C_RESET"
+      printf "%sLes sections INDISPENSABLE doivent être au vert. Les sections%s\n" "$C_DIM" "$C_RESET"
+      printf "%sOPTIONNEL dépendent des produits Datadog que vous activez.%s\n" "$C_DIM" "$C_RESET"
+      echo
+    }
+    print_section() { [ "$OUTPUT_JSON" = true ] && return; printf "%s-- %s%s\n" "$C_BLUE" "$1" "$C_RESET"; }
+    
+    # ==========================================================================
+    print_header
+    
+    # 1. Système (sauté en --network-only)
+    print_section "Système"
+    OS="$(uname -s 2>/dev/null || echo inconnu)"
+    record "PASS" "SYSTÈME" "OS" "$OS ($(uname -m 2>/dev/null || echo '?'))"
+    
+    if [ "$NETWORK_ONLY" = false ]; then
+      if [ "$(id -u 2>/dev/null || echo 1)" = "0" ]; then
+        record "PASS" "SYSTÈME" "Droits" "exécution en root"
+      elif command -v sudo >/dev/null 2>&1; then
+        record "PASS" "SYSTÈME" "Droits" "sudo disponible"
+      else
+        record "WARN" "SYSTÈME" "Droits" "ni root ni sudo détectés" \
+          "L'installation de l'agent requiert des droits administrateur."
+      fi
+    
+      disk_target="/opt"; [ -d "$disk_target" ] || disk_target="/"
+      avail_kb="$(df -Pk "$disk_target" 2>/dev/null | awk 'NR==2{print $4}')"
+      if [ -n "${avail_kb:-}" ] && [ "$avail_kb" -gt 0 ] 2>/dev/null; then
+        avail_gb=$(( avail_kb / 1024 / 1024 ))
+        if [ "$avail_gb" -ge "$MIN_DISK_GB" ]; then
+          record "PASS" "SYSTÈME" "Espace disque" "${avail_gb} Go disponibles sur ${disk_target}"
+        else
+          record "WARN" "SYSTÈME" "Espace disque" "${avail_gb} Go sur ${disk_target} (min. ${MIN_DISK_GB} Go)" \
+            "Libérez de l'espace ou installez l'agent sur un volume plus grand."
+        fi
+      fi
+    fi
+    
+    # 2. Proxy
+    print_section "Proxy"
+    proxy_found=""
+    for v in HTTP_PROXY HTTPS_PROXY http_proxy https_proxy DD_PROXY_HTTP DD_PROXY_HTTPS; do
+      eval "val=\${$v:-}"
+      [ -n "$val" ] && proxy_found="$proxy_found $v=$val"
+    done
+    if [ -n "$proxy_found" ]; then
+      record "WARN" "PROXY" "Variables d'env" "proxy détecté :${proxy_found}" \
+        "L'agent doit être configuré pour ce proxy (section 'proxy' de datadog.yaml)." \
+        "https://docs.datadoghq.com/agent/configuration/proxy/"
+    else
+      record "PASS" "PROXY" "Variables d'env" "aucun proxy système détecté"
+    fi
+    
+    # 3. Téléchargement de l'agent
+    print_section "Téléchargement de l'agent — INDISPENSABLE"
+    check_endpoint "install.datadoghq.com" 443 "Installation"       true
+    check_endpoint "keys.datadoghq.com"    443 "Clés GPG"           true
+    print_section "Téléchargement de l'agent — selon votre distribution"
+    check_endpoint "apt.datadoghq.com"     443 "Dépôt APT (Debian/Ubuntu)" false
+    check_endpoint "yum.datadoghq.com"     443 "Dépôt YUM (RHEL/CentOS)"   false
+    
+    # 4. Communication Datadog
+    print_section "Communication avec Datadog (${SITE_NAME}) — INDISPENSABLE"
+    check_endpoint "7-50-0-app.agent.${SITE}"       443 "Métriques"              true
+    check_endpoint "api.${SITE}"                    443 "API & validation clé"   true
+    check_endpoint "trace.agent.${SITE}"            443 "APM / traces"           true
+    check_endpoint "agent-http-intake.logs.${SITE}" 443 "Logs (HTTPS)"           true
+    check_endpoint "process.${SITE}"                443 "Processus / conteneurs" true
+    
+    print_section "Communication avec Datadog (${SITE_NAME}) — OPTIONNEL (selon produits activés)"
+    check_endpoint "orchestrator.${SITE}"           443 "Orchestrator (K8s)"     false
+    check_endpoint "config.${SITE}"                 443 "Remote Configuration"   false
+    check_endpoint "intake.profile.${SITE}"         443 "Profiling"              false
+    
+    if [ "$CHECK_LEGACY_TCP" = true ] && [ "$SITE_NAME" = "US1" ]; then
+      check_endpoint "agent-intake.logs.${SITE}" 10516 "Logs TCP (héritage)" false
+    fi
+    
+    # 5. Validation de la clé API (best-effort : curl requis)
+    if [ -n "$API_KEY" ]; then
+      print_section "Validation de la clé API"
+      if command -v curl >/dev/null 2>&1; then
+        http_code="$(curl -s -o /dev/null -w "%{http_code}" --max-time "$TIMEOUT" \
+          -H "DD-API-KEY: ${API_KEY}" "https://api.${SITE}/api/v1/validate" 2>/dev/null)"
+        case "$http_code" in
+          200) record "PASS" "CLÉ API" "api.${SITE}" "clé API valide" "" "" "req" ;;
+          403) record "FAIL" "CLÉ API" "api.${SITE}" "clé API refusée (403)" \
+                 "Vérifiez la clé dans Organization Settings > API Keys." "" "req" ;;
+          000) record "WARN" "CLÉ API" "api.${SITE}" "aucune réponse (réseau ?)" \
+                 "La connexion à api.${SITE} a échoué : voir les tests réseau ci-dessus." ;;
+          *)   record "WARN" "CLÉ API" "api.${SITE}" "réponse inattendue (HTTP $http_code)" ;;
+        esac
+      else
+        record "WARN" "CLÉ API" "-" "validation non disponible (curl absent de l'image)" \
+          "Pour valider la clé, utilisez une image contenant curl, ou la version bash sur un hôte."
+      fi
+    fi
+    
+    # ==========================================================================
+    # Rapport final
+    # ==========================================================================
+    if [ "$OUTPUT_JSON" = true ]; then
+      total=$((PASS_COUNT + WARN_COUNT + FAIL_COUNT))
+      [ "$FAIL_COUNT" -eq 0 ] && ready=true || ready=false
+      printf '{\n'
+      printf '  "site": "%s",\n' "$SITE_NAME"
+      printf '  "site_domain": "%s",\n' "$SITE"
+      printf '  "summary": {"pass": %d, "warn": %d, "fail": %d, "total": %d},\n' \
+        "$PASS_COUNT" "$WARN_COUNT" "$FAIL_COUNT" "$total"
+      printf '  "ready": %s,\n' "$ready"
+      printf '  "checks": [%s]\n' "$JSON_ITEMS"
+      printf '}\n'
+    else
+      echo
+      printf "%s----------------------------------------%s\n" "$C_BOLD" "$C_RESET"
+      printf "RÉSULTAT : %s%d réussis%s · %s%d avertissements%s · %s%d bloquants%s\n" \
+        "$C_GREEN" "$PASS_COUNT" "$C_RESET" "$C_YELLOW" "$WARN_COUNT" "$C_RESET" "$C_RED" "$FAIL_COUNT" "$C_RESET"
+      if [ "$FAIL_COUNT" -eq 0 ]; then
+        printf "%s[v] Tous les contrôles INDISPENSABLES sont au vert : prêt pour l'agent Datadog.%s\n" "$C_GREEN" "$C_RESET"
+        if [ "$WARN_COUNT" -gt 0 ]; then
+          printf "%s    Les avertissements concernent des fonctions optionnelles, à vérifier%s\n" "$C_DIM" "$C_RESET"
+          printf "%s    seulement selon les produits Datadog que vous comptez activer.%s\n" "$C_DIM" "$C_RESET"
+        fi
+      else
+        printf "%s[x] Un contrôle INDISPENSABLE a échoué : l'agent ne fonctionnera pas%s\n" "$C_RED" "$C_RESET"
+        printf "%s    correctement tant qu'il n'est pas corrigé (voir les lignes [x] ci-dessus).%s\n" "$C_RED" "$C_RESET"
+      fi
+      printf "%s----------------------------------------%s\n" "$C_BOLD" "$C_RESET"
+    fi
+    
+    [ "$FAIL_COUNT" -eq 0 ]
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: datadog-preflight-nodes
+  labels: {app: datadog-preflight-nodes}
+spec:
+  selector: {matchLabels: {app: datadog-preflight-nodes}}
+  template:
+    metadata: {labels: {app: datadog-preflight-nodes}}
+    spec:
+      tolerations: [{operator: Exists}]
+      securityContext: {runAsNonRoot: true, runAsUser: 10001, seccompProfile: {type: RuntimeDefault}}
+      volumes: [{name: script, configMap: {name: datadog-preflight-script}}]
+      containers:
+        - name: preflight
+          image: busybox:1.36
+          imagePullPolicy: IfNotPresent
+          command: ["sh", "-c"]
+          args: ["sh /scripts/datadog-preflight.sh --site ap2 --network-only --no-color; echo '--- preflight terminé, pod en veille pour lecture des logs ---'; sleep 3600"]
+          volumeMounts: [{name: script, mountPath: /scripts, readOnly: true}]
+          resources: {requests: {cpu: "50m", memory: "32Mi"}, limits: {cpu: "200m", memory: "64Mi"}}
+          securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: ["ALL"]}}

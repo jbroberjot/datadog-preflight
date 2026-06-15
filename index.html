@@ -83,6 +83,11 @@
   .stepn{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
     color:var(--muted);margin:0 0 8px}
   .stepn:not(:first-child){margin-top:18px}
+  .stepsec{font-family:"Space Grotesk";font-weight:600;font-size:13px;color:var(--accent-ink);
+    margin:22px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--line);
+    display:flex;align-items:center;gap:8px}
+  .stepsec:first-child{margin-top:0}
+  .stepsec::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--accent);flex:0 0 6px}
   .cmd{display:flex;align-items:stretch;border:1px solid var(--panel-line);border-radius:10px;
     overflow:hidden;background:var(--panel)}
   .cmd code{font-family:var(--mono);font-size:13px;color:var(--panel-ink);padding:13px 15px;
@@ -229,18 +234,28 @@
         </div>
       </button>
       <button class="plat" data-method="k8s" aria-pressed="false">
-        <!-- Kubernetes logo -->
+        <!-- Kubernetes logo (barre à roue blanche sur heptagone bleu) -->
         <svg class="ic" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          <circle cx="24" cy="24" r="22" fill="#326CE5"/>
-          <circle cx="24" cy="24" r="7" fill="none" stroke="#fff" stroke-width="2.5"/>
-          <line x1="24" y1="2" x2="24" y2="11" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>
-          <line x1="24" y1="37" x2="24" y2="46" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>
-          <line x1="2" y1="24" x2="11" y2="24" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>
-          <line x1="37" y1="24" x2="46" y2="24" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>
-          <line x1="7.5" y1="7.5" x2="14.3" y2="14.3" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>
-          <line x1="33.7" y1="33.7" x2="40.5" y2="40.5" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>
-          <line x1="40.5" y1="7.5" x2="33.7" y2="14.3" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>
-          <line x1="14.3" y1="33.7" x2="7.5" y2="40.5" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>
+          <path fill="#326CE5" d="M24 3 L40.42 10.91 L44.47 28.67 L33.11 42.92 L14.89 42.92 L3.53 28.67 L7.58 10.91 Z"/>
+          <g stroke="#fff" stroke-width="2" stroke-linecap="round">
+            <line x1="24" y1="24" x2="24" y2="11"/>
+            <line x1="24" y1="24" x2="34.17" y2="15.90"/>
+            <line x1="24" y1="24" x2="36.67" y2="26.89"/>
+            <line x1="24" y1="24" x2="29.64" y2="35.71"/>
+            <line x1="24" y1="24" x2="18.36" y2="35.71"/>
+            <line x1="24" y1="24" x2="11.33" y2="26.89"/>
+            <line x1="24" y1="24" x2="13.83" y2="15.90"/>
+          </g>
+          <circle cx="24" cy="24" r="5.5" fill="#326CE5" stroke="#fff" stroke-width="2"/>
+          <g fill="#fff">
+            <circle cx="24" cy="11" r="2.2"/>
+            <circle cx="34.17" cy="15.90" r="2.2"/>
+            <circle cx="36.67" cy="26.89" r="2.2"/>
+            <circle cx="29.64" cy="35.71" r="2.2"/>
+            <circle cx="18.36" cy="35.71" r="2.2"/>
+            <circle cx="11.33" cy="26.89" r="2.2"/>
+            <circle cx="13.83" cy="15.90" r="2.2"/>
+          </g>
         </svg>
         <div>
           <div class="pname">Kubernetes</div>
@@ -311,10 +326,12 @@ document.addEventListener("DOMContentLoaded", function(){
       "step4.label":"Lancez la vérification",
       "check.connectivity":"Connectivité réseau",
       "check.apikey":"Clé API",
-      "check.nodes":"Connectivité par nœud",
-      "check.rbac":"Permissions",
-      "check.psa":"PodSecurity",
-      "check.resources":"Ressources",
+      "check.full":"Vérification complète",
+      "sec.connectivity":"Connectivité par nœud",
+      "sec.permissions":"Permissions installateur",
+      "sec.podsecurity":"PodSecurity",
+      "sec.resources":"Ressources & existant",
+      "sec.cleanup":"Nettoyage",
       "plat.linux.desc":"serveur · script bash",
       "checks.title":"Ce que le contrôle vérifie",
       "checks.sub":"Depuis votre environnement, là où tournera l'agent.",
@@ -355,10 +372,12 @@ document.addEventListener("DOMContentLoaded", function(){
       "step4.label":"Run the check",
       "check.connectivity":"Network connectivity",
       "check.apikey":"API key",
-      "check.nodes":"Per-node connectivity",
-      "check.rbac":"Permissions",
-      "check.psa":"PodSecurity",
-      "check.resources":"Resources",
+      "check.full":"Full check",
+      "sec.connectivity":"Per-node connectivity",
+      "sec.permissions":"Installer permissions",
+      "sec.podsecurity":"PodSecurity",
+      "sec.resources":"Resources & existing install",
+      "sec.cleanup":"Cleanup",
       "plat.linux.desc":"server · bash script",
       "checks.title":"What the check verifies",
       "checks.sub":"From your environment, where the agent will run.",
@@ -422,50 +441,7 @@ document.addEventListener("DOMContentLoaded", function(){
       ];
     }
     if(method === "k8s"){
-      const url = SITE_URLS[site];
-      if(check === "nodes"){
-        const ds = `cat <<'EOF' | kubectl apply -f -
-apiVersion: v1
-kind: Namespace
-metadata: { name: datadog-preflight }
----
-apiVersion: apps/v1
-kind: DaemonSet
-metadata:
-  name: dd-preflight-nodes
-  namespace: datadog-preflight
-  labels: { app: dd-preflight-nodes }
-spec:
-  selector: { matchLabels: { app: dd-preflight-nodes } }
-  template:
-    metadata: { labels: { app: dd-preflight-nodes } }
-    spec:
-      tolerations: [{ operator: Exists }]
-      containers:
-        - name: probe
-          image: busybox:1.36
-          command: ["sh", "-c"]
-          args:
-            - |
-              for h in api.${url} agent-http-intake.logs.${url} trace.agent.${url} process.${url} orchestrator.${url}; do
-                nslookup "$h" >/dev/null 2>&1 && D=OK || D=FAIL
-                nc -z -w3 "$h" 443 >/dev/null 2>&1 && P=OK || P=FAIL
-                echo "DNS=$D  443=$P  $h"
-              done
-              echo "=== node $(hostname) ==="
-              sleep 3600
-          resources: { requests: { cpu: 20m, memory: 16Mi }, limits: { cpu: 100m, memory: 32Mi } }
-          securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, runAsNonRoot: true, runAsUser: 10001, capabilities: { drop: ["ALL"] } }
-EOF`;
-        return [
-          [t("cmd.nodes_deploy"), ds],
-          [t("cmd.nodes_map"),    `kubectl get pods -n datadog-preflight -o wide -l app=dd-preflight-nodes`],
-          [t("cmd.nodes_logs"),   `kubectl logs -n datadog-preflight -l app=dd-preflight-nodes --prefix --tail=-1`],
-          [t("cmd.cleanup_short"),`kubectl delete namespace datadog-preflight`],
-        ];
-      }
-      if(check === "rbac"){
-        const list = `for v in \\
+      const rbacList = `for v in \\
   "create namespaces" \\
   "create serviceaccounts -n datadog" \\
   "create secrets -n datadog" \\
@@ -478,22 +454,21 @@ EOF`;
   "list pods --all-namespaces"; do \\
   printf '%-52s ' "$v"; kubectl auth can-i $v 2>/dev/null; \\
 done`;
-        return [
-          [t("cmd.rbac_admin"), `kubectl auth can-i '*' '*' --all-namespaces`],
-          [t("cmd.rbac_list"),  list],
-        ];
-      }
-      if(check === "psa") return [
+      return [
+        [t("sec.connectivity"), null],
+        [t("cmd.nodes_deploy"), `kubectl apply -f ${RAW}/deploy/${site}-nodes.yaml`],
+        [t("cmd.nodes_map"),    `kubectl get pods -o wide -l app=datadog-preflight-nodes`],
+        [t("cmd.nodes_logs"),   `kubectl logs -l app=datadog-preflight-nodes --prefix --tail=-1`],
+        [t("sec.permissions"), null],
+        [t("cmd.rbac_admin"), `kubectl auth can-i '*' '*' --all-namespaces`],
+        [t("cmd.rbac_list"),  rbacList],
+        [t("sec.podsecurity"), null],
         [t("cmd.psa"), `kubectl get ns -o custom-columns='NAMESPACE:.metadata.name,ENFORCE:.metadata.labels.pod-security\\.kubernetes\\.io/enforce,WARN:.metadata.labels.pod-security\\.kubernetes\\.io/warn'`],
-      ];
-      if(check === "resources") return [
+        [t("sec.resources"), null],
         [t("cmd.res_alloc"),    `kubectl get nodes -o custom-columns='NODE:.metadata.name,CPU:.status.allocatable.cpu,MEM:.status.allocatable.memory,PODS:.status.allocatable.pods'`],
         [t("cmd.res_existing"), `kubectl get daemonsets,deployments --all-namespaces 2>/dev/null | grep -i datadog || echo "No Datadog resource found"`],
-      ];
-      return [
-        [t("cmd.deploy"), `kubectl apply -f ${RAW}/deploy/${site}.yaml`],
-        [t("cmd.logs"),   `kubectl logs -f job/datadog-preflight`],
-        [t("cmd.cleanup"),`kubectl delete -f ${RAW}/deploy/${site}.yaml`],
+        [t("sec.cleanup"), null],
+        [t("cmd.cleanup_short"), `kubectl delete -f ${RAW}/deploy/${site}-nodes.yaml`],
       ];
     }
     if(method === "linux") return [
@@ -509,7 +484,7 @@ done`;
   const CHECKS = {
     linux:   ["connectivity", "apikey"],
     windows: ["connectivity", "apikey"],
-    k8s:     ["connectivity", "nodes", "rbac", "psa", "resources", "apikey"],
+    k8s:     ["full", "apikey"],
   };
 
   let method = "linux", site = "us1", check = "connectivity";
@@ -562,7 +537,7 @@ done`;
   }
 
   function render(){
-    if(!CHECKS[method].includes(check)) check = "connectivity";
+    if(!CHECKS[method].includes(check)) check = CHECKS[method][0];
     renderCheckToggle();
     document.getElementById("panel-title").textContent = METHOD_NAMES[method];
     document.getElementById("panel-tag").textContent = "site " + SITE_NAMES[site] + " · " + t("check." + check);
@@ -570,6 +545,11 @@ done`;
     const c = document.getElementById("steps");
     c.innerHTML = "";
     steps.forEach(([label, cmd]) => {
+      if(cmd === null){
+        const s = document.createElement("p"); s.className = "stepsec"; s.textContent = label;
+        c.appendChild(s);
+        return;
+      }
       const h = document.createElement("p"); h.className = "stepn"; h.textContent = label;
       const row = document.createElement("div"); row.className = "cmd";
       const code = document.createElement("code"); code.textContent = cmd;
