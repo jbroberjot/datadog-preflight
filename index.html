@@ -38,21 +38,21 @@
     letter-spacing:-.02em;margin:14px 0 0;max-width:18ch}
   .lede{font-size:18px;color:var(--muted);max-width:58ch;margin:16px 0 0}
 
-  /* --- Platform selector (signature) --- */
+  /* --- Platform selector --- */
   .seclabel{font-family:var(--mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;
-    color:var(--muted);margin:34px 0 12px}
+    color:var(--muted);margin:28px 0 10px}
   .seclabel b{color:var(--accent-ink)}
-  .platforms{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .platforms{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
   .plat{appearance:none;text-align:left;cursor:pointer;background:var(--surface);
-    border:1.5px solid var(--line);border-radius:16px;padding:20px;transition:all .14s ease;
-    display:flex;flex-direction:column;gap:12px}
-  .plat:hover{border-color:var(--accent);transform:translateY(-2px)}
+    border:1.5px solid var(--line);border-radius:10px;padding:10px 14px;transition:all .14s ease;
+    display:flex;flex-direction:row;align-items:center;gap:10px}
+  .plat:hover{border-color:var(--accent)}
   .plat:focus-visible{outline:2px solid var(--accent-ink);outline-offset:3px}
   .plat[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);
-    box-shadow:0 6px 24px -12px rgba(91,79,224,.5)}
-  .plat .ic{width:40px;height:40px;color:var(--accent-ink)}
-  .plat .pname{font-family:"Space Grotesk";font-weight:600;font-size:18px}
-  .plat .pdesc{font-size:13px;color:var(--muted);font-family:var(--mono)}
+    box-shadow:0 4px 16px -8px rgba(91,79,224,.4)}
+  .plat .ic{width:22px;height:22px;color:var(--accent-ink);flex:0 0 22px}
+  .plat .pname{font-family:"Space Grotesk";font-weight:600;font-size:14px}
+  .plat .pdesc{font-size:11px;color:var(--muted);font-family:var(--mono)}
 
   /* --- Site selector --- */
   .pills{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
@@ -89,6 +89,7 @@
   .checkul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px;font-size:14px;color:var(--ink)}
   .checkul li{line-height:1.5}
 
+  main{padding-top:32px}
   footer{border-top:1px solid var(--line);margin-top:46px;background:var(--surface)}
   .foot{display:flex;flex-wrap:wrap;gap:8px 18px;justify-content:space-between;padding:24px 0;
     font-size:13px;color:var(--muted)}
@@ -120,13 +121,43 @@
   #install-guide .cmd code{white-space:pre;line-height:1.5}
 
   /* --- Language toggle --- */
-  .header-right{display:flex;align-items:center;gap:16px}
+  .header-right{display:flex;align-items:center;gap:12px}
   .lang-toggle{display:flex;gap:4px}
   .lang-btn{background:none;border:1px solid var(--line);border-radius:6px;padding:3px 8px;
     cursor:pointer;font-size:16px;line-height:1;transition:all .12s}
   .lang-btn:hover{border-color:var(--accent)}
   .lang-btn[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
   .lang-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  /* --- README panel --- */
+  .readme-btn{background:none;border:1px solid var(--line);border-radius:6px;padding:4px 11px;
+    cursor:pointer;font-family:var(--mono);font-size:12px;color:var(--muted);font-weight:500;
+    letter-spacing:.04em;transition:all .12s}
+  .readme-btn:hover{border-color:var(--accent);color:var(--ink)}
+  .readme-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .readme-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;
+    opacity:0;pointer-events:none;transition:opacity .2s}
+  .readme-overlay.open{opacity:1;pointer-events:all}
+  .readme-panel{position:fixed;top:0;right:0;bottom:0;width:min(560px,100vw);
+    background:var(--surface);overflow-y:auto;
+    transform:translateX(100%);transition:transform .25s ease;
+    box-shadow:-4px 0 32px rgba(0,0,0,.12)}
+  .readme-overlay.open .readme-panel{transform:translateX(0)}
+  .readme-header{display:flex;align-items:center;justify-content:space-between;
+    padding:20px 24px;border-bottom:1px solid var(--line);position:sticky;top:0;
+    background:var(--surface);z-index:1}
+  .readme-header h2{font-family:"Space Grotesk";font-weight:600;font-size:17px;margin:0}
+  .readme-close{background:none;border:none;cursor:pointer;color:var(--muted);
+    font-size:22px;line-height:1;padding:4px;transition:color .12s}
+  .readme-close:hover{color:var(--ink)}
+  .readme-body{padding:24px;font-size:14px;color:var(--ink);line-height:1.7}
+  .readme-body h3{font-family:"Space Grotesk";font-weight:600;font-size:15px;
+    margin:24px 0 8px;letter-spacing:-.01em}
+  .readme-body h3:first-child{margin-top:0}
+  .readme-body p{color:var(--muted);margin:0 0 12px}
+  .readme-body ul{margin:0 0 12px;padding-left:20px;color:var(--muted)}
+  .readme-body ul li{margin-bottom:4px}
+  .readme-body a{color:var(--accent-ink)}
 
   @media (prefers-reduced-motion:reduce){*{transition:none!important}}
   @media (max-width:680px){
@@ -144,18 +175,12 @@
         <button class="lang-btn" data-lang="fr" aria-pressed="true" title="Français">🇫🇷</button>
         <button class="lang-btn" data-lang="en" aria-pressed="false" title="English">🇬🇧</button>
       </div>
-      <nav class="nav"><a href="https://github.com/jbroberjot/datadog-preflight">GitHub</a></nav>
+      <button class="readme-btn" id="readme-btn" aria-expanded="false">README</button>
     </div>
   </div>
 </header>
 
 <main>
-  <section class="wrap hero">
-    <div class="eyebrow" data-i18n="hero.eyebrow">Vérification avant installation</div>
-    <h1 data-i18n="hero.h1">Prêt à recevoir l'agent Datadog ?</h1>
-    <p class="lede" data-i18n="hero.lede">Une vérification en une commande, qui teste depuis votre propre environnement l'accès aux services Datadog et vous dit en clair ce qui bloque, avant d'installer quoi que ce soit.</p>
-  </section>
-
   <section class="wrap">
     <!-- Étape 1 : plateforme -->
     <p class="seclabel"><b>1</b> &nbsp;<span data-i18n="step1.label">Où voulez-vous lancer la vérification ?</span></p>
@@ -228,17 +253,6 @@
       </div>
       <div class="steps" id="steps"></div>
     </div>
-  </section>
-
-  <section class="wrap">
-    <p class="seclabel" data-i18n="checks.title">Ce que le contrôle vérifie</p>
-    <p class="sub" style="margin:0 0 10px" data-i18n="checks.sub">Depuis votre environnement, là où tournera l'agent.</p>
-    <ul class="checkul">
-      <li data-i18n="checks.dns">Résolution DNS des services Datadog</li>
-      <li data-i18n="checks.firewall">Pare-feu : sortie sur le port 443</li>
-      <li data-i18n="checks.proxy">Détection d'un proxy</li>
-      <li data-i18n="checks.endpoints">Endpoints APM, logs, métriques…</li>
-    </ul>
   </section>
 
   <section class="wrap" id="install-guide">
@@ -605,6 +619,10 @@ kubectl logs &lt;pod-name&gt; -n datadog</code><button class="copy">Copy</button
       const s = STRINGS[lang][el.dataset.i18nHtml];
       if(s !== undefined) el.innerHTML = s;
     });
+    const rFr = document.getElementById("readme-fr");
+    const rEn = document.getElementById("readme-en");
+    if(rFr) rFr.style.display = lang === "fr" ? "" : "none";
+    if(rEn) rEn.style.display = lang === "en" ? "" : "none";
     render();
   }
 
@@ -684,6 +702,67 @@ kubectl logs &lt;pod-name&gt; -n datadog</code><button class="copy">Copy</button
 
   setLang(currentLang);
   detectLang();
+
+  // README panel
+  const readmeBtn = document.getElementById("readme-btn");
+  const readmeOverlay = document.getElementById("readme-overlay");
+  function openReadme(){ readmeOverlay.classList.add("open"); readmeBtn.setAttribute("aria-expanded","true"); document.body.style.overflow="hidden"; }
+  function closeReadme(){ readmeOverlay.classList.remove("open"); readmeBtn.setAttribute("aria-expanded","false"); document.body.style.overflow=""; }
+  readmeBtn.addEventListener("click", openReadme);
+  document.getElementById("readme-close").addEventListener("click", closeReadme);
+  readmeOverlay.addEventListener("click", e => { if(e.target === readmeOverlay) closeReadme(); });
+  document.addEventListener("keydown", e => { if(e.key === "Escape") closeReadme(); });
 </script>
+
+<div class="readme-overlay" id="readme-overlay" role="dialog" aria-modal="true" aria-labelledby="readme-title">
+  <div class="readme-panel">
+    <div class="readme-header">
+      <h2 id="readme-title">README</h2>
+      <button class="readme-close" id="readme-close" aria-label="Fermer">&#x2715;</button>
+    </div>
+    <div class="readme-body">
+      <!-- FR -->
+      <div id="readme-fr">
+        <h3>Qu'est-ce que Datadog Preflight ?</h3>
+        <p>Une vérification en une commande, qui teste depuis votre propre environnement l'accès aux services Datadog et vous dit en clair ce qui bloque, avant d'installer quoi que ce soit.</p>
+        <h3>Ce que le contrôle vérifie</h3>
+        <p>Depuis votre environnement, là où tournera l'agent :</p>
+        <ul>
+          <li>Résolution DNS des services Datadog</li>
+          <li>Pare-feu : sortie sur le port 443</li>
+          <li>Détection d'un proxy</li>
+          <li>Endpoints APM, logs, métriques…</li>
+        </ul>
+        <h3>Comment ça marche ?</h3>
+        <p>Choisissez votre plateforme, votre site Datadog et le type de vérification. Copiez la commande générée et exécutez-la sur l'hôte cible. Aucune installation préalable n'est nécessaire.</p>
+        <h3>Liens</h3>
+        <ul>
+          <li><a href="https://github.com/jbroberjot/datadog-preflight" target="_blank" rel="noopener">Code source sur GitHub</a></li>
+          <li><a href="https://docs.datadoghq.com/agent/configuration/network/" target="_blank" rel="noopener">Documentation réseau Datadog</a></li>
+        </ul>
+      </div>
+      <!-- EN -->
+      <div id="readme-en" style="display:none">
+        <h3>What is Datadog Preflight?</h3>
+        <p>A one-command check that tests connectivity to Datadog services from your own environment and tells you clearly what's blocking, before you install anything.</p>
+        <h3>What the check verifies</h3>
+        <p>From your environment, where the agent will run:</p>
+        <ul>
+          <li>DNS resolution of Datadog services</li>
+          <li>Firewall: outbound port 443</li>
+          <li>Proxy detection</li>
+          <li>APM, logs, metrics endpoints…</li>
+        </ul>
+        <h3>How it works</h3>
+        <p>Choose your platform, your Datadog site, and the check type. Copy the generated command and run it on the target host. No prior installation required.</p>
+        <h3>Links</h3>
+        <ul>
+          <li><a href="https://github.com/jbroberjot/datadog-preflight" target="_blank" rel="noopener">Source code on GitHub</a></li>
+          <li><a href="https://docs.datadoghq.com/agent/configuration/network/" target="_blank" rel="noopener">Datadog network documentation</a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
 </body>
 </html>
