@@ -70,10 +70,10 @@
   /* --- Command panel --- */
   .panel{margin-top:14px;border:1px solid var(--line);border-radius:16px;overflow:hidden;
     background:var(--surface)}
-  .panel-head{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line)}
+  .panel-head{display:flex;align-items:center;flex-wrap:wrap;gap:8px 10px;padding:14px 18px;border-bottom:1px solid var(--line)}
   .panel-head .ptitle{font-family:"Space Grotesk";font-weight:600}
   .panel-head .ptag{font-family:var(--mono);font-size:12px;color:var(--muted)}
-  .check-toggle{display:flex;gap:4px;margin-left:auto}
+  .check-toggle{display:flex;flex-wrap:wrap;gap:4px;margin-left:auto}
   .check-btn{font-family:var(--mono);font-size:11px;font-weight:500;cursor:pointer;padding:4px 10px;
     border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--muted);
     transition:all .12s}
@@ -125,7 +125,8 @@
   .gsub{font-family:"Space Grotesk";font-weight:600;font-size:14px;
     margin:18px 0 8px;color:var(--ink)}
   .glinks{font-size:14px;display:flex;flex-direction:column;gap:6px;margin:8px 0}
-  #install-guide .cmd code{white-space:pre;line-height:1.5}
+  #readme-overlay .cmd code{white-space:pre;line-height:1.5}
+  .cmd code.multiline{white-space:pre;line-height:1.5}
 
   /* --- Language toggle --- */
   .header-right{display:flex;align-items:center;gap:12px}
@@ -271,10 +272,7 @@
       <div class="panel-head">
         <span class="ptitle" id="panel-title">Linux / macOS</span>
         <span class="ptag" id="panel-tag">site US1</span>
-        <div class="check-toggle" id="check-toggle" role="group">
-          <button class="check-btn" data-check="connectivity" aria-pressed="true" data-i18n="check.connectivity">Connectivité réseau</button>
-          <button class="check-btn" data-check="apikey" aria-pressed="false" data-i18n="check.apikey">Clé API</button>
-        </div>
+        <div class="check-toggle" id="check-toggle" role="group" aria-label="Type de vérification"></div>
       </div>
       <div class="steps" id="steps"></div>
     </div>
@@ -313,6 +311,10 @@ document.addEventListener("DOMContentLoaded", function(){
       "step4.label":"Lancez la vérification",
       "check.connectivity":"Connectivité réseau",
       "check.apikey":"Clé API",
+      "check.nodes":"Connectivité par nœud",
+      "check.rbac":"Permissions",
+      "check.psa":"PodSecurity",
+      "check.resources":"Ressources",
       "plat.linux.desc":"serveur · script bash",
       "checks.title":"Ce que le contrôle vérifie",
       "checks.sub":"Depuis votre environnement, là où tournera l'agent.",
@@ -332,6 +334,14 @@ document.addEventListener("DOMContentLoaded", function(){
       "cmd.read_result":"Lire le résultat",
       "cmd.cleanup_short":"Nettoyer",
       "cmd.test_apikey":"Tester la clé API",
+      "cmd.nodes_deploy":"Déployer un pod sur chaque nœud",
+      "cmd.nodes_map":"Voir quel pod tourne sur quel nœud",
+      "cmd.nodes_logs":"Lire les rapports par nœud",
+      "cmd.rbac_admin":"Êtes-vous cluster-admin ?",
+      "cmd.rbac_list":"Droits requis pour installer l'agent",
+      "cmd.psa":"Labels PodSecurity par namespace",
+      "cmd.res_alloc":"Ressources allocatables par nœud",
+      "cmd.res_existing":"Installation Datadog déjà présente ?",
       "copy":"Copier","copied":"Copié",
     },
     en: {
@@ -345,6 +355,10 @@ document.addEventListener("DOMContentLoaded", function(){
       "step4.label":"Run the check",
       "check.connectivity":"Network connectivity",
       "check.apikey":"API key",
+      "check.nodes":"Per-node connectivity",
+      "check.rbac":"Permissions",
+      "check.psa":"PodSecurity",
+      "check.resources":"Resources",
       "plat.linux.desc":"server · bash script",
       "checks.title":"What the check verifies",
       "checks.sub":"From your environment, where the agent will run.",
@@ -364,6 +378,14 @@ document.addEventListener("DOMContentLoaded", function(){
       "cmd.read_result":"Read the result",
       "cmd.cleanup_short":"Clean up",
       "cmd.test_apikey":"Test the API key",
+      "cmd.nodes_deploy":"Deploy a pod on every node",
+      "cmd.nodes_map":"See which pod runs on which node",
+      "cmd.nodes_logs":"Read per-node reports",
+      "cmd.rbac_admin":"Are you cluster-admin?",
+      "cmd.rbac_list":"Permissions required to install the agent",
+      "cmd.psa":"PodSecurity labels per namespace",
+      "cmd.res_alloc":"Allocatable resources per node",
+      "cmd.res_existing":"Existing Datadog install?",
       "copy":"Copy","copied":"Copied",
     }
   };
@@ -399,11 +421,81 @@ document.addEventListener("DOMContentLoaded", function(){
         [t("cmd.test_apikey"), `Invoke-RestMethod "${api}/api/v1/validate" -Headers @{"DD-API-KEY"="VOTRE_CLE_API"}`],
       ];
     }
-    if(method === "k8s") return [
-      [t("cmd.deploy"), `kubectl apply -f ${RAW}/deploy/${site}.yaml`],
-      [t("cmd.logs"),   `kubectl logs -f job/datadog-preflight`],
-      [t("cmd.cleanup"),`kubectl delete -f ${RAW}/deploy/${site}.yaml`],
-    ];
+    if(method === "k8s"){
+      const url = SITE_URLS[site];
+      if(check === "nodes"){
+        const ds = `cat <<'EOF' | kubectl apply -f -
+apiVersion: v1
+kind: Namespace
+metadata: { name: datadog-preflight }
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: dd-preflight-nodes
+  namespace: datadog-preflight
+  labels: { app: dd-preflight-nodes }
+spec:
+  selector: { matchLabels: { app: dd-preflight-nodes } }
+  template:
+    metadata: { labels: { app: dd-preflight-nodes } }
+    spec:
+      tolerations: [{ operator: Exists }]
+      containers:
+        - name: probe
+          image: busybox:1.36
+          command: ["sh", "-c"]
+          args:
+            - |
+              for h in api.${url} agent-http-intake.logs.${url} trace.agent.${url} process.${url} orchestrator.${url}; do
+                nslookup "$h" >/dev/null 2>&1 && D=OK || D=FAIL
+                nc -z -w3 "$h" 443 >/dev/null 2>&1 && P=OK || P=FAIL
+                echo "DNS=$D  443=$P  $h"
+              done
+              echo "=== node $(hostname) ==="
+              sleep 3600
+          resources: { requests: { cpu: 20m, memory: 16Mi }, limits: { cpu: 100m, memory: 32Mi } }
+          securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, runAsNonRoot: true, runAsUser: 10001, capabilities: { drop: ["ALL"] } }
+EOF`;
+        return [
+          [t("cmd.nodes_deploy"), ds],
+          [t("cmd.nodes_map"),    `kubectl get pods -n datadog-preflight -o wide -l app=dd-preflight-nodes`],
+          [t("cmd.nodes_logs"),   `kubectl logs -n datadog-preflight -l app=dd-preflight-nodes --prefix --tail=-1`],
+          [t("cmd.cleanup_short"),`kubectl delete namespace datadog-preflight`],
+        ];
+      }
+      if(check === "rbac"){
+        const list = `for v in \\
+  "create namespaces" \\
+  "create serviceaccounts -n datadog" \\
+  "create secrets -n datadog" \\
+  "create configmaps -n datadog" \\
+  "create daemonsets.apps -n datadog" \\
+  "create deployments.apps -n datadog" \\
+  "create clusterroles.rbac.authorization.k8s.io" \\
+  "create clusterrolebindings.rbac.authorization.k8s.io" \\
+  "get nodes" \\
+  "list pods --all-namespaces"; do \\
+  printf '%-52s ' "$v"; kubectl auth can-i $v 2>/dev/null; \\
+done`;
+        return [
+          [t("cmd.rbac_admin"), `kubectl auth can-i '*' '*' --all-namespaces`],
+          [t("cmd.rbac_list"),  list],
+        ];
+      }
+      if(check === "psa") return [
+        [t("cmd.psa"), `kubectl get ns -o custom-columns='NAMESPACE:.metadata.name,ENFORCE:.metadata.labels.pod-security\\.kubernetes\\.io/enforce,WARN:.metadata.labels.pod-security\\.kubernetes\\.io/warn'`],
+      ];
+      if(check === "resources") return [
+        [t("cmd.res_alloc"),    `kubectl get nodes -o custom-columns='NODE:.metadata.name,CPU:.status.allocatable.cpu,MEM:.status.allocatable.memory,PODS:.status.allocatable.pods'`],
+        [t("cmd.res_existing"), `kubectl get daemonsets,deployments --all-namespaces 2>/dev/null | grep -i datadog || echo "No Datadog resource found"`],
+      ];
+      return [
+        [t("cmd.deploy"), `kubectl apply -f ${RAW}/deploy/${site}.yaml`],
+        [t("cmd.logs"),   `kubectl logs -f job/datadog-preflight`],
+        [t("cmd.cleanup"),`kubectl delete -f ${RAW}/deploy/${site}.yaml`],
+      ];
+    }
     if(method === "linux") return [
       [t("cmd.download"),`curl -fsSL -o datadog-preflight.sh ${RAW}/datadog-preflight.sh`],
       [t("cmd.run"),     `chmod +x datadog-preflight.sh && ./datadog-preflight.sh --site ${site}`],
@@ -413,6 +505,12 @@ document.addEventListener("DOMContentLoaded", function(){
       [t("cmd.run"),     `powershell -ExecutionPolicy Bypass -File .\\datadog-preflight.ps1 -Site ${site}`],
     ];
   }
+
+  const CHECKS = {
+    linux:   ["connectivity", "apikey"],
+    windows: ["connectivity", "apikey"],
+    k8s:     ["connectivity", "nodes", "rbac", "psa", "resources", "apikey"],
+  };
 
   let method = "linux", site = "us1", check = "connectivity";
   let currentLang = localStorage.getItem("dd-preflight-lang") ||
@@ -450,7 +548,22 @@ document.addEventListener("DOMContentLoaded", function(){
     }catch{ /* fallback: navigator.language déjà utilisé */ }
   }
 
+  function renderCheckToggle(){
+    const tg = document.getElementById("check-toggle");
+    tg.innerHTML = "";
+    CHECKS[method].forEach(id => {
+      const b = document.createElement("button");
+      b.className = "check-btn";
+      b.dataset.check = id;
+      b.setAttribute("aria-pressed", id === check ? "true" : "false");
+      b.textContent = t("check." + id);
+      tg.appendChild(b);
+    });
+  }
+
   function render(){
+    if(!CHECKS[method].includes(check)) check = "connectivity";
+    renderCheckToggle();
     document.getElementById("panel-title").textContent = METHOD_NAMES[method];
     document.getElementById("panel-tag").textContent = "site " + SITE_NAMES[site] + " · " + t("check." + check);
     const steps = buildSteps(method, site, check);
@@ -460,6 +573,7 @@ document.addEventListener("DOMContentLoaded", function(){
       const h = document.createElement("p"); h.className = "stepn"; h.textContent = label;
       const row = document.createElement("div"); row.className = "cmd";
       const code = document.createElement("code"); code.textContent = cmd;
+      if(cmd.includes("\n")) code.classList.add("multiline");
       const btn = document.createElement("button"); btn.className = "copy"; btn.textContent = t("copy");
       btn.addEventListener("click", async () => {
         try { await navigator.clipboard.writeText(cmd);
