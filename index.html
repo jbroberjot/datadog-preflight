@@ -16,9 +16,11 @@
     --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
   }
   *{box-sizing:border-box}
-  html{scroll-behavior:smooth}
+  html{scroll-behavior:smooth;height:100%}
   body{margin:0;background:var(--bg);color:var(--ink);font-family:"Inter",system-ui,sans-serif;
-    line-height:1.6;-webkit-font-smoothing:antialiased}
+    line-height:1.6;-webkit-font-smoothing:antialiased;
+    min-height:100%;display:flex;flex-direction:column}
+  main{flex:1;padding-top:32px}
   .wrap{max-width:920px;margin:0 auto;padding:0 24px}
   a{color:var(--accent-ink)}
 
@@ -89,7 +91,6 @@
   .checkul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px;font-size:14px;color:var(--ink)}
   .checkul li{line-height:1.5}
 
-  main{padding-top:32px}
   footer{border-top:1px solid var(--line);margin-top:46px;background:var(--surface)}
   .foot{display:flex;flex-wrap:wrap;gap:8px 18px;justify-content:space-between;padding:24px 0;
     font-size:13px;color:var(--muted)}
