@@ -290,6 +290,7 @@
 </footer>
 
 <script>
+document.addEventListener("DOMContentLoaded", function(){
   const REPO = "jbroberjot/datadog-preflight";
   const RAW = `https://raw.githubusercontent.com/${REPO}/main`;
 
@@ -524,6 +525,7 @@
   document.getElementById("readme-close").addEventListener("click", closeReadme);
   readmeOverlay.addEventListener("click", e => { if(e.target === readmeOverlay) closeReadme(); });
   document.addEventListener("keydown", e => { if(e.key === "Escape") closeReadme(); });
+});
 </script>
 
 <div class="readme-overlay" id="readme-overlay" role="dialog" aria-modal="true" aria-labelledby="readme-title">
