@@ -328,9 +328,7 @@ document.addEventListener("DOMContentLoaded", function(){
       "check.apikey":"Clé API",
       "check.full":"Vérification complète",
       "sec.connectivity":"Connectivité par nœud",
-      "sec.permissions":"Permissions installateur",
-      "sec.podsecurity":"PodSecurity",
-      "sec.resources":"Ressources & existant",
+      "sec.cluster":"Diagnostics du cluster",
       "sec.cleanup":"Nettoyage",
       "plat.linux.desc":"serveur · script bash",
       "checks.title":"Ce que le contrôle vérifie",
@@ -352,8 +350,8 @@ document.addEventListener("DOMContentLoaded", function(){
       "cmd.cleanup_short":"Nettoyer",
       "cmd.test_apikey":"Tester la clé API",
       "cmd.nodes_deploy":"Déployer un pod sur chaque nœud",
-      "cmd.nodes_map":"Voir quel pod tourne sur quel nœud",
       "cmd.nodes_logs":"Lire les rapports par nœud",
+      "cmd.cluster_diag":"Diagnostics cluster (un seul bloc, tout-en-un)",
       "cmd.rbac_admin":"Êtes-vous cluster-admin ?",
       "cmd.rbac_list":"Droits requis pour installer l'agent",
       "cmd.psa":"Labels PodSecurity par namespace",
@@ -374,9 +372,7 @@ document.addEventListener("DOMContentLoaded", function(){
       "check.apikey":"API key",
       "check.full":"Full check",
       "sec.connectivity":"Per-node connectivity",
-      "sec.permissions":"Installer permissions",
-      "sec.podsecurity":"PodSecurity",
-      "sec.resources":"Resources & existing install",
+      "sec.cluster":"Cluster diagnostics",
       "sec.cleanup":"Cleanup",
       "plat.linux.desc":"server · bash script",
       "checks.title":"What the check verifies",
@@ -398,8 +394,8 @@ document.addEventListener("DOMContentLoaded", function(){
       "cmd.cleanup_short":"Clean up",
       "cmd.test_apikey":"Test the API key",
       "cmd.nodes_deploy":"Deploy a pod on every node",
-      "cmd.nodes_map":"See which pod runs on which node",
       "cmd.nodes_logs":"Read per-node reports",
+      "cmd.cluster_diag":"Cluster diagnostics (single all-in-one block)",
       "cmd.rbac_admin":"Are you cluster-admin?",
       "cmd.rbac_list":"Permissions required to install the agent",
       "cmd.psa":"PodSecurity labels per namespace",
@@ -441,7 +437,10 @@ document.addEventListener("DOMContentLoaded", function(){
       ];
     }
     if(method === "k8s"){
-      const rbacList = `for v in \\
+      const noDatadog = currentLang === "fr" ? "Aucune ressource Datadog detectee" : "No Datadog resource found";
+      const clusterDiag = `# ===== ${currentLang === "fr" ? "PERMISSIONS (vos droits d'installation)" : "PERMISSIONS (your install rights)"} =====
+printf '%-52s ' "cluster-admin ?"; kubectl auth can-i '*' '*' --all-namespaces
+for v in \\
   "create namespaces" \\
   "create serviceaccounts -n datadog" \\
   "create secrets -n datadog" \\
@@ -449,24 +448,24 @@ document.addEventListener("DOMContentLoaded", function(){
   "create daemonsets.apps -n datadog" \\
   "create deployments.apps -n datadog" \\
   "create clusterroles.rbac.authorization.k8s.io" \\
-  "create clusterrolebindings.rbac.authorization.k8s.io" \\
-  "get nodes" \\
-  "list pods --all-namespaces"; do \\
+  "create clusterrolebindings.rbac.authorization.k8s.io"; do \\
   printf '%-52s ' "$v"; kubectl auth can-i $v 2>/dev/null; \\
-done`;
+done
+
+# ===== ${currentLang === "fr" ? "PODSECURITY (labels par namespace)" : "PODSECURITY (labels per namespace)"} =====
+kubectl get ns -o custom-columns='NAMESPACE:.metadata.name,ENFORCE:.metadata.labels.pod-security\\.kubernetes\\.io/enforce,WARN:.metadata.labels.pod-security\\.kubernetes\\.io/warn'
+
+# ===== ${currentLang === "fr" ? "RESSOURCES ALLOCATABLES PAR NŒUD" : "ALLOCATABLE RESOURCES PER NODE"} =====
+kubectl get nodes -o custom-columns='NODE:.metadata.name,CPU:.status.allocatable.cpu,MEM:.status.allocatable.memory,PODS:.status.allocatable.pods'
+
+# ===== ${currentLang === "fr" ? "INSTALLATION DATADOG EXISTANTE ?" : "EXISTING DATADOG INSTALL?"} =====
+kubectl get daemonsets,deployments --all-namespaces 2>/dev/null | grep -i datadog || echo "${noDatadog}"`;
       return [
         [t("sec.connectivity"), null],
         [t("cmd.nodes_deploy"), `kubectl apply -f ${RAW}/deploy/${site}-nodes.yaml`],
-        [t("cmd.nodes_map"),    `kubectl get pods -o wide -l app=datadog-preflight-nodes`],
         [t("cmd.nodes_logs"),   `kubectl logs -l app=datadog-preflight-nodes --prefix --tail=-1`],
-        [t("sec.permissions"), null],
-        [t("cmd.rbac_admin"), `kubectl auth can-i '*' '*' --all-namespaces`],
-        [t("cmd.rbac_list"),  rbacList],
-        [t("sec.podsecurity"), null],
-        [t("cmd.psa"), `kubectl get ns -o custom-columns='NAMESPACE:.metadata.name,ENFORCE:.metadata.labels.pod-security\\.kubernetes\\.io/enforce,WARN:.metadata.labels.pod-security\\.kubernetes\\.io/warn'`],
-        [t("sec.resources"), null],
-        [t("cmd.res_alloc"),    `kubectl get nodes -o custom-columns='NODE:.metadata.name,CPU:.status.allocatable.cpu,MEM:.status.allocatable.memory,PODS:.status.allocatable.pods'`],
-        [t("cmd.res_existing"), `kubectl get daemonsets,deployments --all-namespaces 2>/dev/null | grep -i datadog || echo "No Datadog resource found"`],
+        [t("sec.cluster"), null],
+        [t("cmd.cluster_diag"), clusterDiag],
         [t("sec.cleanup"), null],
         [t("cmd.cleanup_short"), `kubectl delete -f ${RAW}/deploy/${site}-nodes.yaml`],
       ];
